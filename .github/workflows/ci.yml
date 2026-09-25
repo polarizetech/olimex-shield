@@ -1,0 +1,29 @@
+name: checks
+on: [push, pull_request]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: optional dependency (BIDS read-back)
+        run: python -m pip install mne mne-bids
+      - name: every suite
+        run: python scripts/check.py
+      - name: ruff (lint + format)
+        run: python -m pip install ruff && ruff check . && ruff format --check .
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - run: arduino-cli core install arduino:avr
+      - run: arduino-cli compile --fqbn arduino:avr:uno apps/olimex-shield/eeg_stream

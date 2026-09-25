@@ -1,0 +1,18 @@
+# Physiological data never goes in git. Sessions and black-box captures stay on the machine
+# that recorded them unless storage.py is configured to upload them to a PRIVATE target.
+sessions/
+recordings/
+apps/server/recordings/
+apps/server/validation/data/
+exports/
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.DS_Store
+.env
+*.env
+build/

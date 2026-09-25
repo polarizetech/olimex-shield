@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "olimex-shield: EEG/ECG/EMG acquisition and recording with an Arduino and the Olimex SHIELD-EKG-EMG"
+type: software
+authors:
+  - name: "Polarize.Tech"
+license: MIT
+version: 0.2.0
+date-released: 2026-09-25
+repository-code: "https://github.com/polarizetech/olimex-shield"
+keywords:
+  - EEG
+  - ECG
+  - EMG
+  - Arduino
+  - Olimex
+  - BIDS
+  - open hardware

@@ -1,0 +1,115 @@
+/* signal-panel.css -- LAYOUT ONLY, like app.css.
+ *
+ * No colour, no font-family, no font-size literal: everything comes from the design system and
+ * dev_check.py fails on a literal here. The components (.ui-row, .ui-btn, .ui-field,
+ * .ui-readout, .ui-rule) are design.css's; this only places them.
+ */
+signal-panel { display: block; }
+
+.sp-bar { align-items: flex-end; margin-bottom: var(--space-3); gap: var(--space-2); }
+.sp-bar .ui-field { max-width: 20rem; }
+.sp-bar .ui-btn { white-space: nowrap; }
+
+.sp-banner { margin: 0 0 var(--space-3); }
+
+/* The trace is the point of the panel: it gets the height, and it keeps it on a phone. */
+.sp-scope { margin: 0 0 var(--space-3); }
+.sp-scope canvas { display: block; width: 100%; height: 42vh; min-height: 200px;
+                   border: 1px solid var(--border); border-radius: var(--radius);
+                   background: var(--card); }
+
+/* A stale or bad field is DIMMED rather than removed -- a field that vanishes is a field
+ * nobody notices is missing. */
+signal-panel .ui-readout dd.is-idle { color: var(--faint-foreground); }
+
+@media (max-width: 640px) {
+  .sp-scope canvas { height: 32vh; }
+  .sp-bar .ui-field { max-width: none; }
+}
+
+/* ---------------------------------------------------------------------------- tagging --
+ * The tag input is the one control an operator uses UNDER TIME PRESSURE -- the lag between
+ * the thing happening and the key going down is already the largest unmeasured error in any
+ * analysis of these marks. So it is large, always focusable, and its quick buttons carry
+ * their own number key.
+ */
+.sp-scope { display: grid; gap: 0; }
+.sp-scope canvas[data-el="trace"] { border-radius: var(--radius) var(--radius) 0 0;
+                                    border-bottom: none; }
+.sp-scope canvas[data-el="timeline"] { height: 66px; min-height: 66px;
+                                       border-radius: 0 0 var(--radius) var(--radius); }
+
+.sp-tagbar { margin: 0 0 var(--space-3); }
+
+.sp-tagfield { display: flex; align-items: stretch; gap: 0;
+               border: 1px solid var(--border); border-radius: var(--radius);
+               background: var(--card); overflow: hidden;
+               transition: border-color 120ms ease, box-shadow 120ms ease; }
+.sp-tagfield:focus-within { border-color: var(--accent);
+                            box-shadow: 0 0 0 3px var(--ring, transparent); }
+
+.sp-tagfield input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: none;
+                     color: var(--foreground); padding: var(--space-3);
+                     font: inherit; font-size: var(--text-lg, inherit); }
+.sp-tagfield input::placeholder { color: var(--faint-foreground); }
+
+.sp-tagbtn { border-radius: 0; border: 0; white-space: nowrap;
+             padding-inline: var(--space-4); display: inline-flex; align-items: center;
+             gap: var(--space-2); }
+.sp-tagbtn kbd, .sp-quickbtn kbd { font: inherit; opacity: 0.65; }
+
+.sp-quick { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.sp-quick:empty { display: none; }
+.sp-quickbtn { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sp-quickbtn kbd { border: 1px solid var(--border); border-radius: 3px;
+                   padding: 0 var(--space-1); }
+
+@media (max-width: 640px) {
+  .sp-scope canvas[data-el="timeline"] { height: 54px; min-height: 54px; }
+  .sp-tagfield input { padding: var(--space-2); }
+}
+
+/* -------------------------------------------------------------- 2026-09-14: merged from
+ * the bridge's former scope page -- the Monitor|Atlas tabs, the spectrum/band-power view,
+ * and the widget rack. Same rule as the rest of this file: layout only, every colour and
+ * size from the design system.
+ */
+/* REGRESSION: `.ui-tabs { display: flex }` and the UA's `[hidden] { display: none }` tie on
+ * specificity, and the author rule wins -- `hidden` on a `.ui-tabs` element does nothing
+ * without this. Several earlier pages each carried a page-level
+ * `[hidden] { display: none !important; }` for the same reason. Scoped to the whole component,
+ * not just the tab bar: `view="controls"` hides `.sp-scope` and `.sp-grid2`, both `display:grid`,
+ * and a tabs-only rule would have left them showing. */
+signal-panel [hidden] { display: none !important; }
+.sp-tabs { margin-bottom: var(--space-4); }
+
+.sp-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-4); margin-top: var(--space-4); }
+
+.sp-spec { height: 140px; min-height: 140px; border: 1px solid var(--border);
+           border-radius: var(--radius); background: var(--card); }
+
+.sp-bandrow { display: grid; grid-template-columns: 56px 1fr 52px; gap: var(--space-2);
+              align-items: center; font-family: var(--font-mono); font-size: var(--text-xs);
+              margin-bottom: 6px; }
+/* NOT .sp-bar -- that class already names the top device/connect row; a second, unrelated
+ * meaning on the same class silently inherits that row's flex layout onto a 6px meter. */
+.sp-meter { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.sp-meter > i { display: block; height: 100%; background: var(--predicted); }
+
+.sp-widgets { display: grid; gap: var(--space-3); }
+.sp-widget { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); }
+.sp-widget h3 { margin: 0 0 var(--space-2); font-size: var(--text-sm); letter-spacing: .06em;
+                text-transform: uppercase; color: var(--muted-foreground); }
+
+@media (max-width: 640px) {
+  .sp-grid2 { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------------ experimental silo --
+ * The "beta — experimental" badge is the design system's own `.ui-tier` in the `exploring`
+ * family; this only spaces it. Layout only, like the rest of this file.
+ */
+.sp-beta { margin-left: var(--space-1); text-transform: none; letter-spacing: 0; }
+.sp-widget h3 .sp-beta { vertical-align: 1px; }
+.sp-beta-note { margin: 0 0 var(--space-3); }

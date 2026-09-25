@@ -1,0 +1,62 @@
+/* app.css -- LAYOUT ONLY.
+ *
+ * No colour, no font-family, no font-size literal: all of it comes from the design system in
+ * vendor/design, and dev_check.py fails on a literal here. This file only places things.
+ */
+body.ui { margin: 0; }
+
+.hdr { display: flex; align-items: baseline; justify-content: space-between;
+       gap: var(--space-3); flex-wrap: wrap; }
+
+.bar { margin: var(--space-4) 0 var(--space-3); align-items: flex-end; gap: var(--space-3);
+       flex-wrap: wrap; }
+.bar .ui-field { max-width: 18rem; }
+.app-tabs { margin-left: auto; }
+
+.banner { margin: 0 0 var(--space-3); }
+[hidden] { display: none !important; }
+
+/* ---- sessions + playback */
+.sessions-grid { display: grid; grid-template-columns: minmax(16rem, 1fr) 2fr;
+                 gap: var(--space-4); align-items: start; }
+#session-list tbody tr { cursor: pointer; }
+#session-list tbody tr[aria-selected="true"] td { background: var(--muted); }
+#session-list td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.player-head { justify-content: space-between; align-items: baseline; }
+.pl-overview { display: block; width: 100%; height: 64px; cursor: pointer;
+               border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.pl-trace { display: block; width: 100%; height: 260px; margin-top: var(--space-2);
+            border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.pl-controls, .pl-actions { gap: var(--space-2); align-items: flex-end; flex-wrap: wrap;
+                            margin: var(--space-3) 0; }
+.pl-tags { max-height: 12rem; overflow-y: auto; padding-left: var(--space-4); }
+.pl-tags li { cursor: pointer; margin-bottom: var(--space-1); }
+.pl-tags li[aria-current="true"] { font-weight: 600; }
+.pl-result { white-space: pre-wrap; }
+
+/* ---- electrode guide (tab and dialog share the renderer) */
+.guide svg, #hookup-body svg { display: block; width: 100%; height: auto;
+                               margin: 0 auto var(--space-3); max-width: 40rem; }
+.guide ol, .guide ul, #hookup-body ol, #hookup-body ul { padding-left: var(--space-4);
+                                                         margin: 0 0 var(--space-3); }
+.guide li, #hookup-body li { margin-bottom: var(--space-2); }
+.hookup-sites { width: 100%; border-collapse: collapse; margin-bottom: var(--space-3); }
+.hookup-sites th, .hookup-sites td { text-align: left; padding: var(--space-1) var(--space-2);
+                                     border-bottom: 1px solid var(--border); }
+
+.hookup { width: min(46rem, 94vw); max-height: 88vh; border: 1px solid var(--border);
+          border-radius: var(--radius); background: var(--card); color: var(--foreground);
+          padding: var(--space-4); }
+.hookup::backdrop { background: var(--overlay); }
+.hookup-head { justify-content: space-between; align-items: baseline;
+               margin-bottom: var(--space-3); }
+.hookup-foot { margin-top: var(--space-4); padding-top: var(--space-3);
+               border-top: 1px solid var(--border); gap: var(--space-2); }
+#hookup-body { overflow-y: auto; max-height: 62vh; }
+
+@media (max-width: 760px) {
+  .sessions-grid { grid-template-columns: 1fr; }
+  .app-tabs { margin-left: 0; }
+  .bar .ui-field { max-width: none; }
+}

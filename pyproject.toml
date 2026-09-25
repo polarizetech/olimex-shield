@@ -1,0 +1,39 @@
+[project]
+name = "olimex-shield"
+version = "0.2.0"
+description = "EEG/ECG/EMG acquisition, recording, playback and BIDS export for an Arduino + Olimex SHIELD-EKG-EMG"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Polarize.Tech" }]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+# The server and workbench are stdlib-only by design: a recording must not fail because a
+# library moved. Everything below is optional.
+dependencies = []
+
+[project.optional-dependencies]
+serial = ["pyserial>=3.5"]
+bids = ["mne>=1.6", "mne-bids>=0.14"]
+dev = ["pyserial>=3.5", "mne>=1.6", "mne-bids>=0.14", "ruff>=0.5"]
+
+[project.urls]
+Repository = "https://github.com/polarizetech/olimex-shield"
+
+[tool.ruff]
+# Keep py310 so ruff's upgrades stay compatible, but the code still runs on 3.9: no `match`,
+# no runtime `X | Y` unions, no zip(strict=...).
+target-version = "py310"
+line-length = 100
+# Markdown is prose; its code blocks are illustrations, not formatted sources.
+extend-exclude = ["apps/web/vendor", "olimex-shield", ".agents", "*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP", "SIM"]
+ignore = [
+  "B905",  # zip(strict=) is 3.10+; the code still runs on Python 3.9
+]

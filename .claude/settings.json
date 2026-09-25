@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.agents/bin/kit_ap\" check --hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

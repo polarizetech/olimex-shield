@@ -1,0 +1,109 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Olimex Shield workbench</title>
+<link rel="stylesheet" href="design/design.css">
+<script type="module" src="design/design.js"></script>
+<link rel="stylesheet" href="signal-panel/signal-panel.css">
+<link rel="stylesheet" href="app.css">
+<body class="ui">
+
+<header class="ui-header">
+  <div class="hdr">
+    <h1>Olimex <em>shield</em></h1>
+    <span class="ui-label">EEG · ECG · EMG workbench — not a medical device</span>
+  </div>
+</header>
+
+<main class="ui-wrap">
+
+  <div class="ui-row bar">
+    <label class="ui-field">
+      <span class="ui-label">Readout</span>
+      <select id="readout" aria-label="what the electrodes are measuring"></select>
+    </label>
+    <nav class="ui-tabs app-tabs" id="tabs" role="tablist">
+      <button data-view="live" aria-selected="true">Live</button>
+      <button data-view="sessions" aria-selected="false">Sessions</button>
+      <button data-view="electrodes" aria-selected="false">Electrodes</button>
+    </nav>
+  </div>
+
+  <!-- The front-end gate answers "can this board carry this readout at all" before anything is
+       recorded. It is a banner, not a footnote. -->
+  <p class="ui-rule banner" id="gate" hidden></p>
+  <p class="ui-rule ui-rule--refuted banner" id="banner" hidden></p>
+
+  <!-- LIVE. The panel owns device picking, Connect, the trace, contact quality, Record and
+       tagging. app.js adds `atlas` (a Monitor | Atlas tab bar) only when the optional
+       auditory-atlas tool is present. The hookup guide is its beforeConnect, so there is no path from Connect to the serial port that skips the safety list. -->
+  <section id="view-live" data-view="live">
+    <signal-panel id="panel" bridge="bridge" project="olimex-shield" readout="eeg" ring="120"></signal-panel>
+  </section>
+
+  <!-- SESSIONS. Everything recorded, played back against its own tag track. -->
+  <section id="view-sessions" data-view="sessions" hidden>
+    <div class="ui-row bar">
+      <h2 class="ui-display--3">Sessions</h2>
+      <button class="ui-btn ui-btn--ghost" id="refresh">Refresh</button>
+      <span class="ui-label" id="store"></span>
+    </div>
+    <div class="sessions-grid">
+      <div class="ui-scroll-x"><table class="ui-table" id="session-list">
+        <thead><tr><th>session</th><th>readout</th><th>source</th><th>length</th><th>tags</th><th>copies</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div id="player" hidden>
+        <div class="ui-row player-head">
+          <h3 class="ui-display--3" id="pl-title"></h3>
+          <ui-tier id="pl-tier"></ui-tier>
+        </div>
+        <p class="ui-rule ui-rule--spec banner" id="pl-warn" hidden></p>
+        <canvas id="pl-overview" class="pl-overview" aria-label="whole session, click to seek"></canvas>
+        <canvas id="pl-trace" class="pl-trace" aria-label="playback trace"></canvas>
+        <div class="ui-row pl-controls">
+          <button class="ui-btn ui-btn--primary" id="pl-play">Play</button>
+          <button class="ui-btn ui-btn--ghost" id="pl-prev" title="previous tag">◀ tag</button>
+          <button class="ui-btn ui-btn--ghost" id="pl-next" title="next tag">tag ▶</button>
+          <label class="ui-field"><span class="ui-label">speed</span>
+            <select id="pl-speed"><option>0.5</option><option selected>1</option><option>2</option><option>4</option><option>10</option></select></label>
+          <label class="ui-field"><span class="ui-label">window s</span>
+            <select id="pl-window"><option>2</option><option selected>5</option><option>10</option><option>30</option></select></label>
+          <span class="ui-mono" id="pl-clock"></span>
+        </div>
+        <dl class="ui-readout" id="pl-meta"></dl>
+        <ol class="pl-tags" id="pl-tags"></ol>
+        <div class="ui-row pl-actions">
+          <button class="ui-btn" id="pl-upload">Upload copy</button>
+          <label class="ui-field"><span class="ui-label">BIDS subject</span><input id="pl-sub" value="01" size="4"></label>
+          <label class="ui-field"><span class="ui-label">task</span><input id="pl-task" value="rest" size="8"></label>
+          <button class="ui-btn" id="pl-bids">Export BIDS</button>
+        </div>
+        <p class="ui-mono pl-result" id="pl-result"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ELECTRODES. The same guide Connect shows, readable any time. -->
+  <section id="view-electrodes" data-view="electrodes" hidden>
+    <div id="guide"></div>
+  </section>
+
+  <dialog id="hookup" class="hookup" aria-labelledby="hookup-title">
+    <form method="dialog">
+      <header class="ui-row hookup-head">
+        <h2 class="ui-display--3" id="hookup-title">Where the electrodes go</h2>
+        <button class="ui-btn ui-btn--ghost" value="cancel">Cancel</button>
+      </header>
+      <div id="hookup-body"></div>
+      <footer class="ui-row hookup-foot">
+        <button class="ui-btn ui-btn--primary" value="go" id="hookup-go">Electrodes are on — connect</button>
+        <button class="ui-btn" value="cancel">Not yet</button>
+      </footer>
+    </form>
+  </dialog>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>

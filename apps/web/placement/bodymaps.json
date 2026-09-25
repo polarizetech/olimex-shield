@@ -1,0 +1,424 @@
+{
+  "schema": "electrode-placement.bodymaps/1",
+  "note": "SCHEMATIC diagrams, not an anatomical atlas. Outlines are drawn to be recognisable and landmark coordinates are placed by eye against anatomy references; nothing here is measured, registered or to scale. Head sites are ESTIMATED 10-20 positions, not positions measured on anyone's head. `registered_to` is null and stays null.",
+  "registered_to": null,
+  "maps": {
+    "hand-dorsal-right": {
+      "label": "Right hand, back (dorsal) view",
+      "view_box": [
+        0,
+        0,
+        200,
+        280
+      ],
+      "mirror_of": null,
+      "orientation": "Fingers up, thumb on the LEFT. This is the back of your right hand held palm-down in front of you.",
+      "outline": [
+        "M 72 268 L 66 214 Q 60 196 56 176 L 44 148 Q 38 134 46 128 Q 55 124 62 136 L 74 158 L 74 150 L 70 96 Q 69 84 78 83 Q 87 83 88 95 L 92 148 L 96 88 Q 97 76 106 76 Q 115 76 116 88 L 118 148 L 124 92 Q 125 80 134 81 Q 143 82 143 94 L 140 150 L 148 112 Q 150 100 159 102 Q 167 104 165 116 L 156 176 Q 152 200 148 216 L 144 268 Z"
+      ],
+      "landmarks": {
+        "FDI belly": {
+          "x": 63,
+          "y": 158,
+          "label_dx": -55,
+          "label_dy": 4,
+          "anchor": "end",
+          "note": "First dorsal interosseous \u2014 the muscle bulge in the web between thumb and index finger. Spread your fingers and it stands up."
+        },
+        "FDI belly, distal": {
+          "x": 68,
+          "y": 156,
+          "label_dx": -58,
+          "label_dy": -22,
+          "anchor": "end",
+          "note": "On the FDI belly, the distal end of a pair laid ALONG the muscle fibres, which run from the web of the thumb toward the base of the index finger."
+        },
+        "FDI belly, proximal": {
+          "x": 63,
+          "y": 176,
+          "label_dx": -59,
+          "label_dy": 28,
+          "anchor": "end",
+          "note": "On the FDI belly, the proximal end of the same pair, back along the fibres toward the wrist. SENIAM's surface-EMG spacing is 20 mm centre to centre, but never more than a quarter of the muscle's length \u2014 on a muscle this small that is about 10-15 mm, as close as the electrodes allow without touching."
+        },
+        "2nd MCP joint": {
+          "x": 92,
+          "y": 152,
+          "label_dx": 62,
+          "label_dy": -18,
+          "anchor": "start",
+          "note": "The index-finger knuckle \u2014 a bony landmark, which picks up less muscle than soft tissue does."
+        },
+        "index fingertip": {
+          "x": 79,
+          "y": 92,
+          "label_dx": -50,
+          "label_dy": -18,
+          "anchor": "end",
+          "note": "The pad of the index finger, not the nail."
+        },
+        "ulnar styloid (wrist)": {
+          "x": 146,
+          "y": 250,
+          "label_dx": 58,
+          "label_dy": 18,
+          "anchor": "start",
+          "note": "The bony bump on the little-finger side of the wrist, where the forearm meets the hand."
+        },
+        "marked spot": {
+          "x": 63,
+          "y": 158,
+          "label_dx": -55,
+          "label_dy": 26,
+          "anchor": "end",
+          "note": "The adhesive dot the attention instruction refers to. Same place as the FDI belly."
+        }
+      }
+    },
+    "torso-front": {
+      "label": "Torso, front view",
+      "view_box": [
+        0,
+        0,
+        220,
+        300
+      ],
+      "mirror_of": null,
+      "orientation": "Facing you \u2014 so the subject's RIGHT is on the LEFT of the diagram, as in every clinical figure.",
+      "outline": [
+        "M 110 22 m -26 0 a 26 30 0 1 0 52 0 a 26 30 0 1 0 -52 0",
+        "M 84 54 Q 60 62 44 78 L 26 140 Q 22 154 34 158 Q 44 160 48 148 L 60 108 L 56 200 Q 54 236 60 268 L 66 292 L 154 292 L 160 268 Q 166 236 164 200 L 160 108 L 172 148 Q 176 160 186 158 Q 198 154 194 140 L 176 78 Q 160 62 136 54 Z"
+      ],
+      "landmarks": {
+        "right collarbone": {
+          "x": 78,
+          "y": 74,
+          "label_dx": -58,
+          "label_dy": -14,
+          "anchor": "end",
+          "note": "Just under the clavicle, subject's right (left of this diagram)."
+        },
+        "left collarbone": {
+          "x": 142,
+          "y": 74,
+          "label_dx": 58,
+          "label_dy": -14,
+          "anchor": "start",
+          "note": "Just under the clavicle, subject's left."
+        },
+        "left lower ribs": {
+          "x": 150,
+          "y": 196,
+          "label_dx": 58,
+          "label_dy": 0,
+          "anchor": "start",
+          "note": "Over the lower ribs on the subject's left, below the heart."
+        },
+        "right hip": {
+          "x": 74,
+          "y": 264,
+          "label_dx": -58,
+          "label_dy": 16,
+          "anchor": "end",
+          "note": "Iliac crest \u2014 the top of the hip bone, subject's right."
+        },
+        "left hip": {
+          "x": 146,
+          "y": 264,
+          "label_dx": 58,
+          "label_dy": 16,
+          "anchor": "start",
+          "note": "Iliac crest, subject's left."
+        },
+        "sternum": {
+          "x": 110,
+          "y": 130,
+          "label_dx": 12,
+          "label_dy": -6,
+          "anchor": "start",
+          "note": "Breastbone, midline."
+        },
+        "V5 (chest)": {
+          "x": 156,
+          "y": 168,
+          "label_dx": 62,
+          "label_dy": 0,
+          "anchor": "start",
+          "note": "5th intercostal space, anterior axillary line, subject's left."
+        }
+      }
+    },
+    "limbs-front": {
+      "label": "Limb lead sites",
+      "view_box": [
+        0,
+        0,
+        220,
+        300
+      ],
+      "mirror_of": null,
+      "orientation": "Facing you \u2014 subject's RIGHT is on the LEFT of the diagram.",
+      "outline": [
+        "M 110 22 m -22 0 a 22 26 0 1 0 44 0 a 22 26 0 1 0 -44 0",
+        "M 88 50 L 66 62 L 52 150 L 44 232 M 132 50 L 154 62 L 168 150 L 176 232",
+        "M 88 50 L 132 50 L 138 170 L 130 176 L 126 264 M 88 50 L 82 170 L 90 176 L 94 264"
+      ],
+      "landmarks": {
+        "right wrist": {
+          "x": 44,
+          "y": 236,
+          "label_dx": -46,
+          "label_dy": 6,
+          "anchor": "end",
+          "note": "Inner wrist, subject's right arm."
+        },
+        "left wrist": {
+          "x": 176,
+          "y": 236,
+          "label_dx": 46,
+          "label_dy": 6,
+          "anchor": "start",
+          "note": "Inner wrist, subject's left arm."
+        },
+        "right ankle": {
+          "x": 94,
+          "y": 268,
+          "label_dx": -40,
+          "label_dy": 20,
+          "anchor": "end",
+          "note": "Bony inner ankle, subject's right leg."
+        },
+        "left ankle": {
+          "x": 126,
+          "y": 268,
+          "label_dx": 40,
+          "label_dy": 20,
+          "anchor": "start",
+          "note": "Subject's left ankle."
+        }
+      }
+    },
+    "head-lateral-right": {
+      "label": "Head, right lateral view (subject facing right)",
+      "view_box": [
+        0,
+        0,
+        240,
+        252
+      ],
+      "mirror_of": "head-lateral-left",
+      "orientation": "Subject faces RIGHT. Nose and forehead on the right of the diagram, occiput on the left. Mirror this map for the left side of the head \u2014 the mirrored map renames itself, because a right mastoid labelled 'left' is exactly the error a placement diagram exists to prevent. Head sites are ESTIMATED 10-20 positions drawn by eye, not measured: find each one on the head with a tape.",
+      "outline": [
+        "M 130,22 C 182,22 214,58 214,100 C 214,112 210,120 205,126 C 201,131 200,135 203,138 C 209,144 216,152 214,158 C 213,163 205,164 199,164 C 196,164 194,167 195,171 C 196,175 194,178 190,180 C 187,182 188,187 191,190 C 194,194 191,201 184,205 C 176,210 160,213 146,212 C 118,211 92,200 76,182 C 60,164 52,140 54,116 C 57,66 88,22 130,22 Z",
+        "M 112,116 C 126,108 138,118 136,133 C 134,149 122,158 111,152 C 102,147 101,123 112,116 Z",
+        "M 96,205 C 94,222 92,236 88,248 M 168,208 C 172,224 176,238 180,248"
+      ],
+      "landmarks": {
+        "Cz (vertex)": {
+          "x": 132,
+          "y": 24,
+          "label_dx": -48,
+          "label_dy": -10,
+          "anchor": "end",
+          "note": "The top of the head: halfway along the nasion-inion line over the vertex, and halfway between the two preauricular points (the small dips just in front of the tragus of each ear). The 10-20 system measures side to side between those points, not between the ear canals. Measure both with a tape \u2014 do not eyeball it; a centimetre here is a different place on the scalp."
+        },
+        "Oz (occipital)": {
+          "x": 58,
+          "y": 96,
+          "label_dx": -34,
+          "label_dy": -12,
+          "anchor": "end",
+          "note": "Occipital midline, the 10-20 Oz position: 10% of the nasion-inion distance up from the inion, on the midline \u2014 roughly 3-4 cm above the bump on an adult head. Measure nasion to inion over the vertex with a tape and mark a tenth of it up from the inion."
+        },
+        "Fpz (forehead)": {
+          "x": 197,
+          "y": 106,
+          "label_dx": 40,
+          "label_dy": -40,
+          "anchor": "start",
+          "note": "Mid-forehead, about 10% of the nasion-inion distance above the nasion. Hairless, so the easiest good contact on the head."
+        },
+        "nasion": {
+          "x": 204,
+          "y": 137,
+          "label_dx": 44,
+          "label_dy": 8,
+          "anchor": "start",
+          "note": "The dip at the bridge of the nose, between the eyes. A measuring landmark, not an electrode site."
+        },
+        "M2 (right mastoid)": {
+          "x": 92,
+          "y": 152,
+          "label_dx": -46,
+          "label_dy": 8,
+          "anchor": "end",
+          "note": "The bony bump behind and below the right ear. Feel for bone, not the soft tissue in front of it."
+        },
+        "A2 (right earlobe)": {
+          "x": 116,
+          "y": 160,
+          "label_dx": -24,
+          "label_dy": 38,
+          "anchor": "end",
+          "note": "The right earlobe. Soft tissue, so it moves with the jaw in a way the mastoid does not."
+        },
+        "right ear canal": {
+          "x": 122,
+          "y": 132,
+          "label_dx": 34,
+          "label_dy": 26,
+          "anchor": "start",
+          "note": "Where the insert earphone sits. Mark the insertion depth on the tube and re-check it every cell \u2014 a depth change is a level change, and a level change moves the FFR."
+        },
+        "magnet mount (right temporo-parietal)": {
+          "x": 150,
+          "y": 70,
+          "label_dx": 68,
+          "label_dy": -72,
+          "anchor": "start",
+          "note": "Where the magnet or the dummy is taped. MOUNTED BY THE THIRD PARTY, before acquisition begins, and never moved while recording \u2014 a magnet moving near the leads induces an artefact perfectly time-locked to the manipulation."
+        },
+        "inion": {
+          "x": 56,
+          "y": 126,
+          "label_dx": -32,
+          "label_dy": 12,
+          "anchor": "end",
+          "note": "The bump at the back of the skull (external occipital protuberance). A measuring landmark for the 10-20 system, not an electrode site: Oz sits 10% of the nasion-inion distance above it."
+        }
+      }
+    },
+    "neck-front": {
+      "label": "Neck and upper chest, front view",
+      "view_box": [
+        0,
+        0,
+        240,
+        210
+      ],
+      "mirror_of": null,
+      "orientation": "Facing the subject. The subject's RIGHT is on the LEFT of this diagram \u2014 the usual clinical convention, and the usual place to get it wrong. Every landmark says whose side it is in words.",
+      "outline": [
+        "M 78,10 C 82,44 88,58 96,66 L 96,84 C 78,96 58,104 44,116 C 32,127 26,146 24,168 L 24,200 M 162,10 C 158,44 152,58 144,66 L 144,84 C 162,96 182,104 196,116 C 208,127 214,146 216,168 L 216,200",
+        "M 44,116 C 72,132 100,142 120,142 C 140,142 168,132 196,116",
+        "M 96,70 C 92,92 86,108 76,120 M 144,70 C 148,92 154,108 164,120"
+      ],
+      "landmarks": {
+        "right SCM belly": {
+          "x": 88,
+          "y": 100,
+          "label_dx": -46,
+          "label_dy": -6,
+          "anchor": "end",
+          "note": "Over the thickest part of the subject's RIGHT sternocleidomastoid. Ask them to turn their head to the LEFT against your hand \u2014 the muscle that stands out is the right SCM."
+        },
+        "left SCM belly": {
+          "x": 152,
+          "y": 100,
+          "label_dx": 46,
+          "label_dy": -6,
+          "anchor": "start",
+          "note": "Over the thickest part of the subject's LEFT sternocleidomastoid. Head turned to the RIGHT against resistance makes it stand out."
+        },
+        "right SCM sternal head": {
+          "x": 104,
+          "y": 132,
+          "label_dx": -50,
+          "label_dy": 16,
+          "anchor": "end",
+          "note": "Low on the subject's RIGHT sternocleidomastoid, where it inserts on the sternum, just up and out from the notch."
+        },
+        "left SCM sternal head": {
+          "x": 136,
+          "y": 132,
+          "label_dx": 50,
+          "label_dy": 16,
+          "anchor": "start",
+          "note": "Low on the subject's LEFT sternocleidomastoid, at its sternal insertion, just up and out from the notch."
+        },
+        "sternal notch": {
+          "x": 120,
+          "y": 140,
+          "label_dx": 0,
+          "label_dy": 30,
+          "anchor": "middle",
+          "note": "The hollow at the top of the breastbone, between the collarbones. Easy to find by touch, and bony, so it moves little with breathing."
+        },
+        "right mastoid": {
+          "x": 78,
+          "y": 62,
+          "label_dx": -44,
+          "label_dy": -14,
+          "anchor": "end",
+          "note": "Behind the subject's right ear. Where the right SCM originates; a measuring landmark here, not a site on this map."
+        },
+        "left mastoid": {
+          "x": 162,
+          "y": 62,
+          "label_dx": 44,
+          "label_dy": -14,
+          "anchor": "start",
+          "note": "Behind the subject's left ear. Where the left SCM originates."
+        }
+      }
+    },
+    "stem-vertical": {
+      "label": "Woody stem, side view",
+      "view_box": [
+        0,
+        0,
+        200,
+        300
+      ],
+      "mirror_of": null,
+      "orientation": "Stem vertical, ground line at the bottom. The pair goes on ONE side of the trunk with the upper contact above the lower; the third contact is in the soil at the base.",
+      "outline": [
+        "M 78 250 Q 74 170 76 96 Q 77 44 84 12 L 116 12 Q 123 44 124 96 Q 126 170 122 250 Z",
+        "M 78 250 Q 60 254 44 262 M 122 250 Q 140 254 156 262",
+        "M 8 262 L 192 262"
+      ],
+      "landmarks": {
+        "upper stem contact": {
+          "x": 100,
+          "y": 120,
+          "label_dx": 62,
+          "label_dy": 0,
+          "anchor": "start",
+          "note": "Through the bark into the cambium and outer sapwood, 2-3 mm deep. Not the dead outer bark, which is an insulator and gives a beautifully quiet recording of nothing."
+        },
+        "lower stem contact": {
+          "x": 100,
+          "y": 150,
+          "label_dx": 62,
+          "label_dy": 0,
+          "anchor": "start",
+          "note": "1 cm below the upper contact, same depth, same side of the trunk. The 1 cm separation is the published electrophytography spacing (Souza et al. 2017; Reissig et al. 2023)."
+        },
+        "soil at the base": {
+          "x": 44,
+          "y": 268,
+          "label_dx": -12,
+          "label_dy": 14,
+          "anchor": "end",
+          "note": "In damp soil within a hand's width of the root flare, pushed in far enough to stay wet. A floating third contact is the commonest reason a record is nothing but mains hum."
+        },
+        "lower trunk": {
+          "x": 100,
+          "y": 232,
+          "label_dx": 62,
+          "label_dy": 0,
+          "anchor": "start",
+          "note": "Low on the trunk, near the root flare. An alternative to the soil contact when the earth is too dry to hold one."
+        },
+        "opposite side, upper": {
+          "x": 80,
+          "y": 120,
+          "label_dx": -14,
+          "label_dy": -6,
+          "anchor": "end",
+          "note": "The same height as the upper contact but on the far side of the trunk. A second pair here is what would show whether an excursion propagates."
+        }
+      }
+    }
+  }
+}
