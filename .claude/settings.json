@@ -9,6 +9,15 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "S=\"${SCAFFOLD_BIN:-$(command -v scaffold || echo \"$CLAUDE_PROJECT_DIR/../scientific-research-scaffold/bin/scaffold\")}\"; [ -f \"$S\" ] && python3 \"$S\" version --hook \"$CLAUDE_PROJECT_DIR\" || true",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }
