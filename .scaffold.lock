@@ -1,5 +1,6 @@
 {
   "scaffold": "v0.5.0",
+  "adopted": true,
   "files": {
     ".github/workflows/check.yml": "d0cdd0c17802ff7e26ca7645ad8f5a75a6cfd4b2d7573b6431b41d3d96b9611a",
     "Makefile": "efb7e3dc0d9855b9dbc3828c43d454a4cf0aa1bffd94a158cbccbe5e25dabd2d",
