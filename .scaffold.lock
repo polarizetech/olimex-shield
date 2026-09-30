@@ -1,6 +1,8 @@
 {
-  "scaffold": "v0.4.0",
+  "scaffold": "v0.5.0",
   "files": {
+    ".github/workflows/check.yml": "d0cdd0c17802ff7e26ca7645ad8f5a75a6cfd4b2d7573b6431b41d3d96b9611a",
+    "Makefile": "efb7e3dc0d9855b9dbc3828c43d454a4cf0aa1bffd94a158cbccbe5e25dabd2d",
     ".claude/disciplines.md": "44923f839c4e08a8afb89b71b51678c65cbc21dbf20ee724573c99a89fea67b9",
     ".claude/agents/scout.md": "441f4a425368d9ce5f5967e3130ccca6d9813308b7e9a3ec26e5f97293482dd8",
     ".claude/agents/computational-engineer.md": "cd5c0dfd98341093d3d309a5d31b5e6172373dd8383ddfc125747bde95827dba",
