@@ -141,7 +141,7 @@ Three endpoints back it, and they are useful headless too:
 |---|---|
 | `POST /quality` | is this channel's signal plausible for the readout, and if not, which check failed (`method: "plausibility heuristic"`) |
 | `POST /bands` | band powers as fractions of 1–45 Hz (a proxy — see the caveat it returns) |
-| `POST /spectrum` | a coarse amplitude spectrum for drawing |
+| `POST /spectrum` | a coarse amplitude spectrum for drawing: per display bucket, the largest amplitude among all the bins it covers (`summary: "max"`) |
 
 ---
 

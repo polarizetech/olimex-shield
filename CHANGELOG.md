@@ -5,6 +5,18 @@ under **Board** so a recording can be matched to the firmware it was made with.
 
 ## [Unreleased]
 
+No `model-v*` tag: `quality.py` is in the measuring chain, but `spectrum()` feeds only the
+workbench's drawing (`POST /spectrum`). Nothing it returns is stored in a session or an export, and
+the signal check (`assess()`, `bands()`) is unchanged, so no experiment is invalidated.
+
+### Fixed
+- `quality.spectrum()` evaluated one DFT bin per display bucket and skipped the rest, so on a
+  record longer than a couple of seconds a narrow line fell between the evaluated bins and vanished
+  from the Monitor tab's spectrum (a 260-count 10 Hz sine over 20 s drew as about 1 count). Each
+  bucket now reports the **maximum** amplitude of every bin it covers, from one zero-padded FFT of
+  the most recent 16 384 samples at most. `freqs` are now bucket centres. `resolution_hz` keeps its
+  meaning (rate / samples used); `bucket_hz`, `bin_hz`, `samples_used` and `summary` are new.
+
 ## [0.2.0] — 2026-09-25
 
 First public release. Tagged `model-v0.2.0`: this version changes numbers in recordings and exports,
