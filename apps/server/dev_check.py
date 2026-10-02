@@ -335,6 +335,33 @@ ok(
     "the Hann-windowed spectrum still reads a sinusoid's amplitude correctly",
     abs(max(_sp["amps"]) - 100.0) < 1.0 and _sp["window"] == "hann",
 )
+# Every bin in a display bucket is summarised (0.2.0 evaluated one bin per bucket and skipped the
+# rest, so on a long record a narrow line fell between them). Tolerance: 10 % of the input
+# amplitude, which covers the 4 % zero-padding bound plus the added noise.
+for _secs in (2, 20, 60):
+    _sr = random.Random(1)
+    _sp = quality.spectrum(
+        [
+            512 + 260 * math.sin(2 * math.pi * 10 * k / FS) + _sr.gauss(0, 25)
+            for k in range(int(_secs * FS))
+        ],
+        FS,
+    )
+    _top = max(range(len(_sp["amps"])), key=_sp["amps"].__getitem__)
+    ok(
+        f"a 260-count 10 Hz sine in noise is the tallest spectrum point over {_secs} s",
+        abs(_sp["freqs"][_top] - 10.0) <= _sp["bucket_hz"]
+        and abs(_sp["amps"][_top] - 260.0) <= 26.0
+        and _sp["summary"] == "max",
+        f"{_sp['freqs'][_top]:.2f} Hz, {_sp['amps'][_top]:.1f} counts",
+    )
+ok(
+    "the spectrum's cost is capped: it uses at most SPECTRUM_MAX_SAMPLES recent samples",
+    quality.spectrum([math.sin(k) for k in range(quality.SPECTRUM_MAX_SAMPLES + 500)], FS)[
+        "samples_used"
+    ]
+    == quality.SPECTRUM_MAX_SAMPLES,
+)
 ok("...and hands back a checklist of what to physically fix", len(qf["checklist"]) >= 3)
 qr_ = quality.assess(railed, FS, uv_per_count=7.9)
 ok("a railing channel is caught by the rail check", qr_["railing_frac"] > 0.9)

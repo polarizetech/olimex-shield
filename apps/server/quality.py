@@ -353,24 +353,81 @@ def bands(samples, rate_hz):
     return out
 
 
+#: The display spectrum uses at most this many of the most recent samples (65 s at 250 Hz), so its
+#: cost has a ceiling whatever a caller sends.
+SPECTRUM_MAX_SAMPLES = 16384
+
+
+def _fft(x):
+    """Radix-2 FFT of a sequence whose length is a power of two. Stdlib only, O(n log n)."""
+    n = len(x)
+    if n == 1:
+        return [complex(x[0])]
+    even = _fft(x[0::2])
+    odd = _fft(x[1::2])
+    half = n // 2
+    w = -2.0 * math.pi / n
+    t = [complex(math.cos(w * k), math.sin(w * k)) * odd[k] for k in range(half)]
+    return [even[k] + t[k] for k in range(half)] + [even[k] - t[k] for k in range(half)]
+
+
 def spectrum(samples, rate_hz, lo_hz=1.0, hi_hz=45.0, bins=120):
-    """A coarse amplitude spectrum for drawing. Averages Goertzel bins into `bins` display buckets,
-    so the cost is bounded by the display width rather than by the record length."""
-    n = len(samples)
+    """A coarse amplitude spectrum for drawing: at most `bins` display buckets over lo_hz..hi_hz.
+
+    Every transform bin in the range is evaluated, and each bucket reports the MAXIMUM amplitude of
+    the bins it covers. The maximum is chosen over the mean of power because this is an amplitude
+    display: a narrow line (mains, a calibration tone, a steady-state response) then reads at its
+    own amplitude however long the record is, where a mean would dilute it by the number of bins
+    in the bucket. The price is that a bucket of noise reads at its largest bin, not its average,
+    so the noise floor of this display rises slowly with record length. It is not a power
+    density; do not integrate it. Band shares come from `bands()`.
+
+    Cost. One FFT of the Hann-windowed record, zero-padded to the next power of two at or above
+    twice its length: O(n log n), not one Goertzel pass per bin. Only the most recent
+    `SPECTRUM_MAX_SAMPLES` samples are used, so the cost has a ceiling. The padding only
+    interpolates between the record's own DFT bins; it adds no resolution, and it bounds how far a
+    tone can sit from an evaluated bin, so a steady sinusoid reads at most 4 % low.
+
+    Returns:
+      freqs          centre frequency of each bucket (Hz): the midpoint of the bins it covers
+      amps           per bucket, the largest sinusoid amplitude among its bins, in input units
+      resolution_hz  rate / samples_used: the record's own frequency resolution, NOT the spacing
+                     of the returned points (the Hann main lobe is four times this wide)
+      bucket_hz      spacing of the returned points
+      bin_hz         spacing of the evaluated (zero-padded) transform bins
+      samples_used   how many samples went into the transform
+      summary        "max", the per-bucket statistic
+      window         "hann"
+    """
     rate_hz = float(rate_hz)
-    if n < 64:
+    if len(samples) < 64:
         raise DomainError("need at least 64 samples for a spectrum")
+    if bins < 1:
+        raise DomainError("need at least one display bucket")
+    samples = samples[-SPECTRUM_MAX_SAMPLES:]
+    n = len(samples)
     x = _prepared(samples, "hann")
-    # Hann coherent gain is 0.5, so a sinusoid's amplitude is 2*sqrt(p) / (0.5 * n).
-    norm = 0.5 * n
-    k_lo = max(1, int(lo_hz * n / rate_hz))
-    k_hi = min(n // 2 - 1, int(hi_hz * n / rate_hz))
+    n_fft = 1 << (2 * n - 1).bit_length()
+    k_lo = max(1, int(math.ceil(lo_hz * n_fft / rate_hz - 1e-9)))
+    k_hi = min(n_fft // 2 - 1, int(math.floor(hi_hz * n_fft / rate_hz + 1e-9)))
+    meta = {
+        "resolution_hz": rate_hz / n,
+        "bin_hz": rate_hz / n_fft,
+        "samples_used": n,
+        "summary": "max",
+        "window": "hann",
+    }
     if k_hi <= k_lo:
-        return {"freqs": [], "amps": []}
-    step = max(1, (k_hi - k_lo) // bins)
+        return {"freqs": [], "amps": [], "bucket_hz": None, **meta}
+    spec = _fft(x + [0.0] * (n_fft - n))
+    # Hann coherent gain is 0.5, so a sinusoid's amplitude is 2*|X[k]| / (0.5 * n).
+    norm = 0.5 * n
+    m = k_hi - k_lo + 1
+    buckets = min(bins, m)
     freqs, amps = [], []
-    for k in range(k_lo, k_hi + 1, step):
-        p = _goertzel_power(x, rate_hz, k, n)
-        freqs.append(k * rate_hz / n)
-        amps.append(2.0 * math.sqrt(p) / norm)
-    return {"freqs": freqs, "amps": amps, "resolution_hz": rate_hz / n, "window": "hann"}
+    for j in range(buckets):
+        a = k_lo + j * m // buckets
+        b = k_lo + (j + 1) * m // buckets  # exclusive
+        freqs.append(0.5 * (a + b - 1) * rate_hz / n_fft)
+        amps.append(2.0 * max(abs(spec[k]) for k in range(a, b)) / norm)
+    return {"freqs": freqs, "amps": amps, "bucket_hz": m * rate_hz / n_fft / buckets, **meta}
