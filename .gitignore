@@ -16,3 +16,7 @@ node_modules/
 .env
 *.env
 build/
+
+# automatic-documentation-site: build output and story cache
+docs-site/dist/
+docs-site/.cache/
