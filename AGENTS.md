@@ -23,14 +23,38 @@ Read and obey `.agents/protocols/PREREG_PROTOCOL.md` before running, modifying, 
 <!-- kit_ap:end -->
 
 <!-- scaffold:start -->
+# olimex-shield
+
+**Kind:** tool (`TOOL.toml`). Acquires, checks, records and exports EEG/ECG/EMG from an Arduino + Olimex SHIELD-EKG-EMG
+
+- **No research here.** No questions, preregistrations, results or findings, no `RESEARCH.md`,
+  `EXPERIMENTS.md`, `experiments/` or `preregistrations/`. A measurement made with this tool belongs to the study that made it.
+- **Scope before science.** The claim, then the features, then an evidence basis and the person's recorded
+  decision for every scientific feature, in `SCOPE.toml` (`.agents/protocols/SCOPE_PROTOCOL.md`). Infrastructure
+  is yours to decide; nothing scientific is built before it is scoped. An override's experiment is
+  preregistered in the research corpus, not here. A tool the person calls exploratory skips this until it
+  gets its claim (`stage = "exploratory"` in `SCOPE.toml`); nothing it shows is a finding.
+- **Releases** follow `.agents/protocols/TOOL_VERSIONING.md`; run `python3 .agents/tools/release-check` before
+  tagging.
+- **One version.** `version` in `TOOL.toml`, `pyproject.toml` and `CITATION.cff`, and a `CHANGELOG.md`
+  heading, all agree; `scaffold check` fails when they drift. Releases are tagged `vX.Y.Z`.
+- **Consumers.** Each repo that depends on this tool is listed in `TOOL.toml` with what it `uses`. A change
+  to any of those is a change for that consumer even when every test here passes: name it under
+  `### Outputs changed` in `CHANGELOG.md`.
+- **No absolute home-directory paths.**
+
+
 ## Agents and coordination
 
 Maintained by scientific-research-scaffold from scientific-research-agents (`scaffold update` keeps this section current; edits here are
-replaced). The full rules are the [coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.1.1/COORDINATION.md).
+replaced). The full rules are the [coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.2.0/COORDINATION.md).
+
+## Specialist roles
 
 This repo has specialist roles, each briefed in a file under `.claude/agents/`. Claude Code delegates to
-them as subagents. **Other assistants (Codex and the rest): before a task of one of these kinds, read
-that file and follow it as your brief.**
+them as subagents. **Other assistants (ChatGPT, Codex and the rest): before a task of one of these kinds,
+read that file and follow it as your brief.** When the environment supports and the user has authorized
+subagents, the lead may delegate; otherwise apply the relevant brief in the current session.
 
 | role | takes | brief |
 |---|---|---|
@@ -50,6 +74,6 @@ that file and follow it as your brief.**
 - **Parallel only when independent**: different files, at most three at a time, each in its own worktree.
 - **Start cheap, escalate on a signal**: two failed attempts, a design decision across many files, or
   subtle scientific or statistical judgment. Escalate the task, not the session.
-- **Codex:** use `gpt-5.6-sol`. Reasoning effort low for finding and summarising, medium by default, high or xhigh when escalating.
+- **Codex:** use `gpt-5.6-sol`. Use low reasoning effort for finding and summarising, medium by default, and a higher effort supported by the selected model when escalating.
 - **Scaffold version.** At the start of a session, run `scaffold version .` (or `../scientific-research-scaffold/bin/scaffold version .`). If it reports a newer release, tell the person and offer to upgrade, following the steps it prints (Claude Code runs this by itself).
 <!-- scaffold:end -->

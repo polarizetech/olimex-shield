@@ -10,7 +10,7 @@ around them, so that a reviewer can check the science by reading the code.
 
 ## Before you write code
 
-- Read `CLAUDE.md` and `AGENTS.md`, and the manifest (`STUDY.toml`, `SIM.toml` or `TOOL.toml`).
+- Read the repository instructions and the manifest (`STUDY.toml`, `SIM.toml` or `TOOL.toml`).
 - **The science is not yours to choose.** Equations, parameters, transforms, thresholds and
   interpretations come from the user and the research. If `.agents/protocols/SCOPE_PROTOCOL.md` exists,
   no scientific feature is built until it has an evidence basis and the user's recorded decision. In a
@@ -29,7 +29,7 @@ around them, so that a reviewer can check the science by reading the code.
 
 ## Choosing a language
 
-Route by the constraint, not by habit ([full reasoning and sources](https://github.com/polarizetech/scientific-research-agents/blob/v0.1.1/references/language-routing.md)):
+Route by the constraint, not by habit ([full reasoning and sources](https://github.com/polarizetech/scientific-research-agents/blob/v0.2.0/references/language-routing.md)):
 
 0. An existing simulator or toolkit covers the model class (Brian2, NEST, NEURON, GeNN, BrainPy, MNE)?
    Use it, and write glue, not engines.
@@ -67,4 +67,4 @@ Route by the constraint, not by habit ([full reasoning and sources](https://gith
 End with a handoff of at most 150 words: **Done** (what was done), **Files** (created or changed),
 **Open** (questions only the person can answer, and anything left undone) and **Next** (which agent should
 go next, and what it needs). Other agents see the handoff, not your transcript
-([coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.1.1/COORDINATION.md)).
+([coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.2.0/COORDINATION.md)).
