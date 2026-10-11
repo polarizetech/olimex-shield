@@ -26,6 +26,13 @@ START, END = "<!-- kit_ap:start -->", "<!-- kit_ap:end -->"
 BLOCK_RE = re.compile(re.escape(START) + r".*?" + re.escape(END) + r"\n?", re.S)
 LEGACY_BLOCK_RE = re.compile(r"\n*<!-- convo-log:start -->.*?<!-- convo-log:end -->\n?", re.S)  # old install.sh
 MANAGED_CMD = re.compile(r"\.agents/(?:bin|tools)/|tools/convo-log")  # hook commands kit_ap owns
+# Modules removed from the kit. A project that still lists one drops it on its next update: its files and hooks
+# are removed like any other module's, and the reason is printed. Adding one again is refused.
+RETIRED_MODULES = {
+    "convo-log": "conversation logging was removed from the kit (0.2.0). Existing logs and PR comments are left as they are.",
+    "tool-scope": "merged into prereg (0.6.0): claim-first scoping now applies to every unit. Its protocol, template "
+                  "and scope-status come with prereg, and existing SCOPE.toml records are kept.",
+}
 MODULE_META = {"module.json", "instructions.md", "hooks"}  # module entries that are not vendored as files
 CHECK_TTL = 6 * 3600       # how long a successful update check is reused by the session-start hook
 CHECK_FAIL_TTL = 30 * 60   # ...and a failed (e.g. offline) one, so sessions don't each wait for the timeout
@@ -192,6 +199,8 @@ def resolve(mods, wanted):
         order.append(name)
 
     for name in ["core", *wanted]:
+        if name in RETIRED_MODULES and name not in mods:
+            continue  # dropped; apply() reports it
         visit(name, [])
     return order
 
@@ -375,6 +384,9 @@ def apply(kit, repo, wanted, force=False, ref=None, message=None):
 
     short = (info["commit"] or "")[:7] + (" (uncommitted kit changes)" if info["dirty"] else "")
     print(f"kit_ap: {repo} now at {short}; modules: {', '.join(order)}")
+    for name in old.get("modules") or []:
+        if name in RETIRED_MODULES and name not in order:
+            print(f"  [{name}] removed: {RETIRED_MODULES[name]}")
     for name in order:
         if name not in (old.get("modules") or []):
             for note in p["mods"][name].get("notes", []):
@@ -477,6 +489,9 @@ def cmd_init(a):
 def cmd_add(a):
     repo = repo_root(a.repo)
     lock = require_lock(repo)
+    retired = [m for m in a.modules if m in RETIRED_MODULES]
+    if retired:
+        raise Fail(f"{', '.join(retired)}: {RETIRED_MODULES[retired[0]]}")
     new = [m for m in a.modules if m not in lock["modules"]]
     run_apply(installed_kit(lock), repo, lock["modules"] + new, a.force,
               message=None if a.no_commit else f"Add {NAME} module: {', '.join(new or a.modules)}")
