@@ -46,4 +46,4 @@ The design system is `polarizetech/polarize-ui`. It is the source of reusable co
 End with a handoff of at most 150 words: **Done** (what was done), **Files** (created or changed),
 **Open** (questions only the person can answer, and anything left undone) and **Next** (which agent should
 go next, and what it needs). Other agents see the handoff, not your transcript
-([coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.2.0/COORDINATION.md)).
+([coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.3.0/COORDINATION.md)).

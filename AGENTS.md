@@ -42,12 +42,13 @@ Read and obey `.agents/protocols/PREREG_PROTOCOL.md` before running, modifying, 
   to any of those is a change for that consumer even when every test here passes: name it under
   `### Outputs changed` in `CHANGELOG.md`.
 - **No absolute home-directory paths.**
+- **Search with the retrieval tool first.** A question about science, the literature or evidence is answered from `research-rag` ([polarizetech/retrieval-augmented-generation](https://github.com/polarizetech/retrieval-augmented-generation)), the MCP server of that name in the session: search with it before answering, and ground what you say in the passages it returns, not in memory or a general web search. If its tools aren't available in the session, say so before answering any other way. The person can tell you not to use it, for one question or a whole session. A question about this repo's own code or files doesn't need it.
 
 
 ## Agents and coordination
 
 Maintained by scientific-research-scaffold from scientific-research-agents (`scaffold update` keeps this section current; edits here are
-replaced). The full rules are the [coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.2.0/COORDINATION.md).
+replaced). The full rules are the [coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.3.0/COORDINATION.md).
 
 ## Specialist roles
 
