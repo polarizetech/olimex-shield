@@ -3,24 +3,26 @@
 Stdlib only; imported by the acquisition daemon, so it must not be able to fail on a missing
 dependency. Pure: no I/O, no threads, no clock of its own — the caller passes timestamps in.
 
-WHY THIS EXISTS (RIG.md, 2026-09-15)
+WHY THIS EXISTS
     The board reports 250 Hz because it schedules samples off its own `micros()`, and that clock is
-    the thing in question. Against the host clock this board runs at 249.839 Hz, -644 ppm. Nothing
-    that only draws or checks contact notices; a lock-in at a nominal frequency does — a 60 Hz line
-    40 dB above the floor read "not detected" at 40 s. So the daemon measures the rate it is
-    actually receiving, and says how well it knows it.
+    the thing in question. Boards commonly run hundreds of ppm off nominal, and the error drifts.
+    Nothing that only draws or checks contact notices; a lock-in at a nominal frequency does -- a
+    few hundred ppm moves a 60 Hz line by tens of mHz, enough to average a strong line toward zero
+    over tens of seconds. So the daemon measures the rate it is actually receiving, and says how
+    well it knows it.
 
 METHOD
     Each time a chunk arrives, record (host time, samples received so far). If the board delivered
     exactly `declared` Hz, `host_t - count/declared` (the latency) would be flat. Its slope is the
     clock error. Latency can only ever ADD delay — USB polling, OS buffering, a busy reader — so
     the clean line is the LOWER ENVELOPE: take the minimum latency in each 5 s bin and fit a line
-    through those minima. On this rig that gave 0.16 ms of scatter over 123 s where a plain
-    least-squares fit would have absorbed any growth in buffering into the answer.
+    through those minima. A plain least-squares fit would absorb any growth in buffering into the
+    answer; the envelope does not.
 
 WHAT IT ASSUMES, stated so nobody has to rediscover it
     - No samples are lost on the wire. A lost sample makes the count lag host time permanently and
-      reads as a slower clock. RIG.md measured zero drops in 46,212 rows at 115200 baud.
+      reads as a slower clock. `StreamIntegrity` below counts gaps from the board's `t_us`, and a
+      non-zero count is the evidence that this assumption failed.
     - The host clock is good to a few ppm (NTP-disciplined). Nothing here can check that.
     - The rate is steady over the fit window. The window slides (`keep_s`), so slow drift — a
       resonator warming up — is followed rather than averaged away.
@@ -36,9 +38,9 @@ MIN_SPAN_S = 30.0  # nor from a shorter stretch
 KEEP_S = 600.0  # sliding window: follow slow drift rather than average it away
 # A stretch this long with NO samples means the count stopped tracking time -- the board rebooted
 # or the stream stalled -- and every point before it is on a different line. Start over.
-# Found on the real rig: opening the port delivers stale lines still sitting in the OS buffer from
-# the previous session INSTANTLY, then the Arduino resets and says nothing for 1.62 s. That early
-# instant became the lowest latency of its bin and dragged a -685 ppm clock to -3300 ± 1491.
+# Opening the port can deliver stale lines still sitting in the OS buffer from the previous session
+# INSTANTLY, then the Arduino resets and says nothing for ~1.6 s. Without a restart that early
+# instant becomes the lowest latency of its bin and biases the fit by thousands of ppm.
 GAP_RESET_S = 1.0
 
 
@@ -150,7 +152,7 @@ class RateEstimator:
 #: `micros()` on the AVR is a 32-bit unsigned long: it wraps to 0 every 2**32 us (~71.6 min).
 T_US_MODULUS = 2**32
 #: A step more than this fraction of the declared period away from it is not jitter. The board's
-#: steps are 3988-4012 us (RIG.md: the AVR's 4 us `micros()` resolution), so 0.5 x 4000 = 2000 us of
+#: steps jitter by a few us (the AVR's `micros()` resolution is 4 us), so 0.5 x 4000 = 2000 us of
 #: tolerance is far outside jitter and far inside one missing sample (a step of 8000).
 GAP_TOLERANCE = 0.5
 

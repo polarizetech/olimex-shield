@@ -1,0 +1,30 @@
+# TEMPLATE for an extension built on olimex-shield. Copy this folder (to extensions/<name>/ here,
+# or into your own repository), then rename `olimex_shield_ext_template` and every
+# `olimex-shield-ext-template` below. Rules: docs/EXTENSIONS.md. A folder whose name starts with
+# `_` is not an extension and is not catalogued.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "olimex-shield-ext-template"
+dynamic = ["version"]
+description = "One line: the one job this adds on top of olimex-shield."
+license = { text = "MIT" }
+requires-python = ">=3.9"
+# olimex-shield runs from a checkout and is not a pip distribution, so its range is declared
+# below rather than as a dependency. It must equal REQUIRES in the package.
+dependencies = []
+
+[tool.olimex-shield]
+requires = ">=0.3.0,<0.4"
+
+# This is what makes the extension discoverable (extensions.discover()) wherever it is installed.
+[project.entry-points."olimex_shield.extensions"]
+olimex-shield-ext-template = "olimex_shield_ext_template"
+
+[tool.hatch.version]
+path = "olimex_shield_ext_template/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["olimex_shield_ext_template"]

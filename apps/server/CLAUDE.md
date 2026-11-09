@@ -14,19 +14,28 @@ What this process owns:
 4. **Sessions** (`sessions.py`), **upload hand-off** (`storage.py`, plugin only) and **BIDS export**
    (`bids.py`).
 
-**Experimental analysis is siloed in `experimental.py`.** Lock-in extraction, the integration
+**Experimental analysis is siloed in an extension**, `olimex-shield-ext-experimental`
+(`extensions/experimental/`, versioned apart; see `docs/EXTENSIONS.md`). This process never
+imports it by name: `extensions.py` (the kit) discovers it and `serve.py` serves the `ROUTES` it
+exposes, and answers 503 with the extension's status when it is absent or refused. `/health`
+lists every extension with its status. Lock-in extraction, the integration
 check, the noise budget, detection curves, the rate trade and the auditory atlas are not
 established methods for this hardware. They come from optional companion tools
 (`signal-detection`, `auditory-atlas`, `injection-recovery`) found through `$OLIMEX_TOOLS` (or a
 tools directory with a `REGISTRY.md` above this repo). Without them those routes answer 503 "not
 installed". **Every response from them carries `"experimental": true` and a `"note"`**, 503s
-included. The rig's nV noise figures (`MEASURED_RIG`, `NOISE_NV_AT_40HZ`) and the `RECALLED` table
-live there too. See `docs/experimental.md`.
+included. No board's noise figures live here: the routes that need a noise floor take it from the
+request or from a user-supplied profile (`$OLIMEX_RIG_PROFILE`), and without either they say so
+(`GET /rig/profile`). See `docs/experimental.md`.
 
-**The daemon measures the sample rate itself** (`timebase.py`, 2026-09-15). The board's clock says
-250 Hz; against the host clock it runs ~−680 ppm and drifts (−644 → −685 ppm in one day).
-`/status` keeps `rate: 250` as the **declared** value and adds `rateMeasured` / `rateErrorPpm` /
-`rateUncertaintyPpm` / `rateBasis`, `null` for the first 30 s. Method and validation: `RIG.md`.
+**This repo is the tool only.** Measurements of any particular board, validation write-ups and
+experiment records belong in the researcher's own research repo, not here.
+
+**The daemon measures the sample rate itself** (`timebase.py`). The board's clock says 250 Hz;
+boards commonly run hundreds of ppm off nominal against the host clock, and drift. `/status` keeps
+`rate: 250` as the **declared** value and adds `rateMeasured` / `rateErrorPpm` /
+`rateUncertaintyPpm` / `rateBasis`, `null` for the first 30 s. The method is in `timebase.py`'s
+docstring.
 
 Stdlib-only except an optional `pyserial`. Must still run on Python 3.9.
 
@@ -81,9 +90,11 @@ is the evidence that the assumption failed.
 ## The dependency runs one way, and `dev_check.py` asserts it
 
 Experimental analysis may read the daemon's samples. **The daemon must never depend on it.**
-`serve.py` imports `experimental.py` inside a guard, and `experimental.py` guards each tool import
-with a stub exception class, so a tool that failed to import cannot make the request handler
-`NameError` while handling an error. Acquisition is the job that is not allowed to fail.
+`serve.py` reaches extensions only through the kit (`extensions.py`), inside a guard; the kit
+reports an extension that fails to load instead of raising, and the experimental extension guards
+each tool import with a stub exception class, so a tool that failed to import cannot make the
+request handler `NameError` while handling an error. `tests/test_contract.py` asserts by AST that
+no core file imports an extension. Acquisition is the job that is not allowed to fail.
 
 ---
 
@@ -146,10 +157,12 @@ Arduino + **Olimex SHIELD-EKG-EMG**, CSV over serial (`t_us,ch0,ch1`), **115200 
 `channelCol` selects the column (default 1 = ch0; 0 means "no `t_us` column"). Any board printing
 CSV lines in that shape works. It is **one differential channel**.
 
-**µV per count is 7.9, and it is not externally verified.** It was derived in an earlier internal
-app from the shield's built-in calibration square wave at its nominal ~250 µV peak-to-peak
-(250 / 31.6 counts). The datasheet gain implies 1.72. `rig.UV_PER_COUNT_PROVENANCE` says so, and
-the BIDS sidecar carries it as `ScalingProvenance`. Every µV and nV figure in this repo inherits it.
+**µV per count defaults to 7.9, and it is not externally verified.** It is a default from one
+board's built-in calibration square wave at its nominal ~250 µV peak-to-peak; the gain trimmer
+differs per board, so users calibrate theirs and set `$OLIMEX_UV_PER_COUNT` (or send
+`uv_per_count` with a session). The datasheet gain implies 1.72. `rig.uv_per_count_in_use()` says
+which applies; sessions record `uv_per_count` / `uv_per_count_basis`, and the BIDS sidecar carries
+the scale used as `Scaling` / `ScalingProvenance`. Every µV and nV figure inherits it.
 
 ## Data
 
@@ -182,24 +195,3 @@ solid uses. *Steering* audio from it is where the burden of proof begins, and co
 The atlas (experimental) **predicts**; it measures nothing. Its most useful single output is
 probably the artefact caveat: an FFR recorded through an unshielded transducer can be the
 transducer, at exactly the frequency and exactly the waveform you were looking for.
-
-## The extraction layer, run against THIS board's captures (EXPERIMENTAL)
-
-`validation/rig_noise_floor.py` runs the noise-floor gate against this rig's own private captures.
-It needs `$OLIMEX_RIG_CAPTURES` (never in this repo) and the companion signal-detection tool; it
-reads and writes nothing else. Its figures are experimental and inherit the unverified µV/count.
-
-- The **broadband RMS is the wrong quantity** for a lock-in: real EEG is drift-dominated, and on
-  these captures a broadband RMS overstated the noise at 40 Hz by **3.5–24× in amplitude — 12–594×
-  in dwell** (corrected 2026-09-13 from 20–90×, which was a hard-coded literal in a print).
-- **Median in-band noise at 40 Hz after 60 s of dwell: 157 nV** (range 64–750 nV, six captures;
-  corrected 2026-09-13 from 238, a median-indexing bug). Required dwell, on the noisiest capture:
-  1 µV → 5.1 min; 300 nV → 56 min; 100 nV → 507 min; 30 nV → 5 628 min.
-- The spread across sessions is **11.7×** and is **not attributed**: the good-contact capture has
-  the *highest* 40 Hz figure, so treat it as unexplained in-band power of a scalp recording, not as
-  instrument noise. No shorted-input measurement exists.
-- The captures' 7.9 µV/count is the same cal-derived figure in every sidecar — consistency, not an
-  independent confirmation.
-
-> A cortical 40 Hz ASSR is plausibly within reach on this rig; a brainstem-class response (tens of
-> nV) is ~two orders of magnitude out of reach. Both statements are experimental.

@@ -204,10 +204,10 @@ with tempfile.TemporaryDirectory() as d:
         ),
         "",
     )
-    D.annotate({"stamp": st, "rate_measured_hz": 249.83, "rate_basis": "host clock"})
+    D.annotate({"stamp": st, "rate_measured_hz": 249.9, "rate_basis": "host clock"})
     ok(
         "annotate adds the measured rate to a finished session",
-        D.load(st, values=False)["meta"]["rate_measured_hz"] == 249.83,
+        D.load(st, values=False)["meta"]["rate_measured_hz"] == 249.9,
     )
     raises(
         "...but may not add anything else",

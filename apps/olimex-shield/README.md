@@ -34,10 +34,10 @@ RAM (arduino-cli 1.5.1, AVR core 1.8.8).
 4. Connect USB to the laptop.
 
 **`ch1` (`A1`) is printed but not shown to be a second input.**
-- On the one rig measured, with the leads floating, ch1 correlated +0.89 with ch0. That is what a
-  floating pin picking up the same room looks like.
-- The cheapest check: touch or short one channel's leads and see which column responds
-  (`apps/server/RIG.md`).
+- A floating analog pin picks up the same room as the real input, so ch1 moving, or even tracking
+  ch0, does not make it a second channel.
+- The cheapest check: touch or short one channel's leads and see which column responds (see
+  [Checking your board](#checking-your-board)).
 
 ## Flashing
 
@@ -86,11 +86,31 @@ arduino-cli monitor -p <port> -c baudrate=115200
 **The board's clock is not exact.**
 - The sketch schedules samples off the board's own `micros()`, so `t_us` always agrees with itself
   and cannot reveal a clock error.
-- Against a computer's clock, one board ran at 249.83 Hz (about −680 ppm), and that figure moved
-  by 41 ppm within a day.
+- Against a computer's clock, boards commonly run hundreds of ppm off nominal, and the error
+  drifts, so it is measured, never hard-coded.
 - The bridge measures the real rate against the host clock (`apps/server/timebase.py`). Any
   lock-in analysis must use that measured rate.
 - `t_us` is a 32-bit `micros()`, so it wraps every 71.6 minutes.
+
+## Checking your board
+
+Every board differs. Before trusting a recording, measure your own, and keep the results with your
+research records (the tool ships no board's measurements):
+
+- **Which column is the shield.** Touch or short one channel's leads and watch which column
+  responds. Until you have, treat `ch1` as unidentified.
+- **Mains pickup.** With the leads floating, a strong 60/50 Hz line is expected: floating leads are
+  an antenna. The workbench's signal check should call that **unusable**, which is correct.
+- **Sample rate.** Leave the bridge streaming for at least 30 s and read `/status`:
+  `rateMeasured` and `rateErrorPpm` are your board against the host clock. Sessions record them.
+- **Scale.** Inject an external signal of known amplitude, read its size in counts, and set
+  `OLIMEX_UV_PER_COUNT` to µV ÷ counts. Until then the bridge uses its default (7.9) and says so.
+- **Noise floor.** Short the inputs through a resistor near realistic electrode-skin impedance,
+  record several minutes, and take the RMS in your band. The experimental routes read it from a
+  rig profile (`OLIMEX_RIG_PROFILE`, see [`docs/experimental.md`](../../docs/experimental.md)).
+- **Lost samples.** `/status` → `parseErrors` and `streamGaps` should stay at 0.
+
+What to measure and why: [`docs/hardware.md`](../../docs/hardware.md).
 
 ## Versioning
 

@@ -1,0 +1,29 @@
+# An extension of olimex-shield, versioned apart from it. Rules: docs/EXTENSIONS.md.
+# The bridge finds it from the catalogue (extensions/catalog.json) without an install;
+# `pip install -e extensions/experimental` registers the entry point as well.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "olimex-shield-ext-experimental"
+dynamic = ["version"]
+description = "Serves the experimental analysis routes (lock-in, noise budget, atlas) as bridge routes."
+license = { text = "MIT" }
+requires-python = ">=3.9"
+# olimex-shield is not a pip distribution (it runs from a checkout), so its range is not a
+# dependency here. It is declared below, and must equal REQUIRES in the package.
+dependencies = []
+
+[tool.olimex-shield]
+requires = ">=0.3.0,<0.4"
+
+# This is what makes the extension discoverable (extensions.discover()) wherever it is installed.
+[project.entry-points."olimex_shield.extensions"]
+olimex-shield-ext-experimental = "olimex_shield_ext_experimental"
+
+[tool.hatch.version]
+path = "olimex_shield_ext_experimental/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["olimex_shield_ext_experimental"]

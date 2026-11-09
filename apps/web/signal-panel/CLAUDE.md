@@ -83,8 +83,8 @@ plus `signal-connected`, `signal-disconnected`, `signal-quality`,
 `quality`, `tier`, `rateMeasured`, `rateErrorPpm`).
 
 **Rate: `el.info.rate` is DECLARED, `el.analysisRate` is for lock-in.** The bridge measures the
-rate the board really delivers (`apps/server/timebase.py`, ~−680 ppm on this board, drifting);
-the panel polls it and fires `signal-rate` (detail `el.rateInfo`: `declared`, `measured`,
+rate the board really delivers (`apps/server/timebase.py`; boards run hundreds of ppm off
+nominal, and drift); the panel polls it and fires `signal-rate` (detail `el.rateInfo`: `declared`, `measured`,
 `errorPpm`, `uncertaintyPpm`, `basis`) each time the measurement updates. `analysisRate` is the
 measured value once it exists and the declared one before (~30 s). `state.rate` never changes
 mid-session, because the ring and every tag are indexed by it. The readout shows
@@ -102,8 +102,8 @@ mid-session, because the ring and every tag are indexed by it. The readout shows
 3. **A stale readout is dimmed, never removed.** A field that vanishes is a field nobody notices
    is missing, and "no signal" and "no readout" look identical when one is absent.
 4. **The trace states its own axes.** Volts/div and s/div are drawn. An autoscaled trace with no
-   scale invites reading amplitude off a picture, and on this rig amplitude is the least safe
-   thing to read that way.
+   scale invites reading amplitude off a picture, and with an uncalibrated scale amplitude is the
+   least safe thing to read that way.
 
 Plus two inherited: drawing is `setInterval` (rAF does not run in a headless pane at all and
 stops in a backgrounded tab), and the quality check is the bridge's **own** `POST /quality`, not
@@ -149,7 +149,7 @@ draws from `signal-samples`.
   it to the periodic check too.
 - **The rate key was wrong twice.** The panel read `rate_hz` from `/open` and `/status` and sent
   `rate_hz` to `/quality`; the bridge's key is `rate` in both directions. Every connection fell
-  back to 250 Hz — correct on this rig by coincidence only.
+  back to 250 Hz — correct only while the declared rate happens to be 250.
 - **A down bridge said nothing.** A host proxy answers with a JSON `{error, hint}`, so nothing
   threw and the picker quietly offered only the demo port. It is reported in the banner now.
 - **Stream gaps were concatenated.** A tab that fell behind the bridge's ring silently compressed

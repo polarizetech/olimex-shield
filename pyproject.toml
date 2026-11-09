@@ -1,6 +1,6 @@
 [project]
 name = "olimex-shield"
-version = "0.2.0"
+version = "0.3.0"
 description = "EEG/ECG/EMG acquisition, recording, playback and BIDS export for an Arduino + Olimex SHIELD-EKG-EMG"
 readme = "README.md"
 license = { text = "MIT" }

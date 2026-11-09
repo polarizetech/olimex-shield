@@ -65,7 +65,7 @@ reattaches from its last sample index.
 
 | Call | Returns |
 |---|---|
-| `eeg.status()` | `{supported, open, port, baud, rate, rateMeasured, rateErrorPpm, rateUncertaintyPpm, rateBasis, total, generation, parseErrors, streamGaps, maxGapUs, stream, error, recording…}` — `rate` is **declared** (250); `rateMeasured` is the host-clock measurement, `null` for the first 30 s. **Use `rateMeasured` for any lock-in** (see `RIG.md`). `parseErrors` / `streamGaps` / `maxGapUs` count what the wire lost since the port opened, from the board's `t_us` (malformed lines are dropped, never replaced) |
+| `eeg.status()` | `{supported, open, port, baud, rate, rateMeasured, rateErrorPpm, rateUncertaintyPpm, rateBasis, total, generation, parseErrors, streamGaps, maxGapUs, stream, error, recording…}` — `rate` is **declared** (250); `rateMeasured` is the host-clock measurement, `null` for the first 30 s. **Use `rateMeasured` for any lock-in** (method: `timebase.py`). `parseErrors` / `streamGaps` / `maxGapUs` count what the wire lost since the port opened, from the board's `t_us` (malformed lines are dropped, never replaced) |
 | `eeg.ports()` | detected serial devices |
 | `eeg.connect({port,baud,channelCol})` | opens + subscribes (idempotent) |
 | `eeg.recent(n)` | last *n* samples, oldest→newest |
@@ -87,17 +87,36 @@ Files land in `apps/server/recordings/` as `sample_index,value,t_us` (older file
 column) with a trailing `# stopped … parse_errors=… gaps=… max_gap_us=…` line. `/record/stop`
 returns the same counts as `recParseErrors`, `recGaps`, `recMaxGapUs` for the recording window.
 
+**Three traps when consuming the stream:**
+
+- **There is no `/recent` HTTP route.** `recent()` is a method on `eeg-client.js`, fed by
+  `/stream`. A fetch of `/recent` gets a JSON 404 body, and because it is JSON nothing throws.
+- **A JSON proxy cannot carry `/stream`.** `urlopen().read()` never returns on an SSE response; a
+  same-origin proxy needs a line-by-line pipe (the workbench's `/bridge/stream` in
+  `apps/web/serve.py` is one).
+- **"Open" is not "streaming."** Reopening the port resets `total` to 0 and bumps `generation`,
+  and opening it resets the Arduino, so the first sample arrives a second or two later. A
+  readiness check should watch the counter *increase* between polls.
+
 ---
 
 ## 4. The experimental routes, and where they come from
 
-All of these live in `experimental.py` and are **experimental** (see `docs/experimental.md`):
+All of these are served by the extension `olimex-shield-ext-experimental`
+(`extensions/experimental/`, found by `extensions.discover()`; see `docs/EXTENSIONS.md`) and are
+**experimental** (see `docs/experimental.md`):
 `/predict`, `/montage`, `/simulate`, `/atlas/reference`, `/claims` come from the optional
 companion **auditory-atlas** tool; `/extract*`, `/noise-budget`, `/integration-check`,
 `/rate-trade`, `/detection-curve` from **signal-detection** and **injection-recovery**. The bridge
 finds them through `$OLIMEX_TOOLS` (or a tools directory holding `REGISTRY.md` above this repo).
 Without them those routes answer **503** with a hint, and `/health` reports `atlas: false` /
-`detection: false`. Every response — 503s included — carries `"experimental": true` and a `"note"`.
+`detection: false` under that extension's `health` (in `extensions`, each with its status). If the
+extension itself is absent or refused (`incompatible`, `error`), its routes answer **503** with the
+extension's status. Every response — 503s included — carries `"experimental": true` and a `"note"`.
+`/noise-budget` and `/detection-curve` need a noise floor for **your** board: pass
+`noise_floor_uv_rms` (and `provenance`) in the request, or point `$OLIMEX_RIG_PROFILE` at a JSON
+profile (schema in `docs/experimental.md`). With neither they answer **400** saying no rig profile
+is configured; `GET /rig/profile` reports what is configured and needs no companion tool.
 `/quality`, `/bands` and `/spectrum` are this board's own and always answer.
 
 ## Hardware

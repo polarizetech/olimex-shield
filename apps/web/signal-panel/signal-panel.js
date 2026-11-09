@@ -116,8 +116,8 @@ function defaultWidgets() {
   return [
     {
       id: 'integration', title: 'Integration check', needs: 90, experimental: true,
-      hint: "Does this channel's noise actually average down? Measured on this rig, 4 of 9 "
-        + 'baselines FAIL -- and on those, recording for longer buys nothing.',
+      hint: "Does this channel's noise actually average down? If it does not, recording for "
+        + 'longer buys nothing.',
       async run(samples, ctx) {
         const r = await ctx.post('/integration-check', { samples, rate: ctx.rate, ref_hz: 40 });
         return `<div class="ui-note" style="font-weight:600">${r.integrates ? 'integrates' : 'drift-limited'}</div>
@@ -290,8 +290,9 @@ export class SignalPanel extends HTMLElement {
              uncertaintyPpm: s.rateUncertaintyPpm, basis: s.rateBasis };
   }
 
-  /** The rate to use for LOCK-IN: measured once the bridge has it, declared until then. At
-   *  -644 ppm a lock-in at the declared rate nulls a 40 dB line within 40 s (RIG.md). */
+  /** The rate to use for LOCK-IN: measured once the bridge has it, declared until then. Boards
+   *  run hundreds of ppm off nominal, and a long lock-in at the declared rate can average a strong
+   *  line toward zero (apps/server/timebase.py). */
   get analysisRate() { return this.state.rateMeasured || this.state.rate; }
 
   _syncTraceControls() {
@@ -391,14 +392,14 @@ export class SignalPanel extends HTMLElement {
       }).then((x) => x.json());
     } catch (e) { return this.fail(`bridge unreachable: ${e}`); }
     // The bridge answers 404 with a JSON BODY, so a wrong route makes nothing throw and the
-    // UI simply never connects. apps/server/RIG.md records that trap; this checks.
+    // UI simply never connects (apps/server/INTEGRATION.md lists that trap); this checks.
     if (r.error) return this.fail(r.error + (r.hint ? ` — ${r.hint}` : ''));
 
     const st = await fetch(this._url('status')).then((x) => x.json()).catch(() => ({}));
     const s = this.state;
     s.connected = true;
     // REGRESSION: this read `rate_hz`, which the bridge has never sent -- its key is `rate` --
-    // so every connection silently fell back to 250. Right on this rig by coincidence only.
+    // so every connection silently fell back to 250 -- right only when the declared rate is 250.
     s.rate = Number(r.rate || st.rate) || 250;
     s.gaps = 0;
     // A new connection is a new clock: never carry a previous port's measured rate across.
@@ -786,7 +787,7 @@ export class SignalPanel extends HTMLElement {
     g.stroke();
 
     // The axes, in words. An autoscaled trace with no scale invites reading amplitude off a
-    // picture, and on this rig amplitude is the thing least safe to read that way.
+    // picture, and with an uncalibrated scale amplitude is the thing least safe to read that way.
     g.fillStyle = css('--faint-foreground', this) || css('--foreground', this);
     g.font = '10px ui-monospace, monospace';
     const secs = s.rate ? x.length / s.rate : 0;

@@ -1,0 +1,49 @@
+kind = "tool"
+name = "olimex-shield"
+job = "Acquires, checks, records and exports EEG/ECG/EMG from an Arduino + Olimex SHIELD-EKG-EMG"
+stage = "SHIPPED"                  # SKETCH | PROBE | BENCH | SHIPPED
+visibility = "public"
+visibility_decided = "2026-09-25"
+profile = "polarizetech"
+# Not a Python package (it runs from a checkout: apps/), so there is no [package] table and the
+# version is stated here. Its one source is `version` in pyproject.toml; this mirrors it, and
+# tests/test_contract.py fails when they differ (as do CITATION.cff and CHANGELOG.md).
+version = "0.3.0"
+# A tool holds no research: no question, no [corpus], no experiments.
+
+[extensions]
+group = "olimex_shield.extensions"  # the entry-point group an extension registers under
+prefix = "olimex-shield-ext-"       # every extension's distribution name starts with this
+catalog = "extensions/catalog.json"
+# The kit is apps/server/extensions.py. Rules: docs/EXTENSIONS.md.
+
+# One entry per repo that depends on this tool, with what it relies on. A change to anything in
+# `uses` breaks a consumer this repo cannot test: say so under `### Outputs changed` in
+# CHANGELOG.md, and pin a `vX.Y.Z` tag there, never a branch.
+
+[[consumers]]
+name = "olimex-shield-bridge"
+repo = "polarizetech/audio-projects"
+path = "projects/olimex-shield-bridge"
+uses = [
+  "apps/server/rig.py UV_PER_COUNT",
+  "OLIMEX_UV_PER_COUNT",
+  "OLIMEX_RIG_PROFILE",
+  "POST /noise-budget",
+  "POST /detection-curve",
+  "GET /rig/profile",
+  "GET /status rateMeasured",
+  "black-box CSV format sample_index,value,t_us",
+  "session.json software_version, uv_per_count, uv_per_count_basis",
+  "BIDS export (apps/server/bids.py)",
+]
+
+[[consumers]]
+name = "audio-projects tools/ symlinks"
+repo = "polarizetech/audio-projects"
+path = "tools/olimex-shield"        # this repo, mounted as a submodule
+uses = [
+  "apps/server (symlinked as tools/eeg-bridge)",
+  "apps/web/signal-panel (symlinked as tools/signal-panel)",
+  "apps/web/placement (symlinked as tools/electrode-placement)",
+]

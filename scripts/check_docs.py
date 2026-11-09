@@ -5,9 +5,14 @@
     OLIMEX_BLOG_POST=/path/to/post.md python3 scripts/check_docs.py
 
 1. The README's safety list is the workbench's list, word for word.
-2. The Polarize.Tech post "Can a $70 board tell me I'm wrong?" states figures this repo defines,
-   and the README shows photos taken from it. Each shared figure must appear in the post as the
-   code has it, and each photo must be byte-identical to the post's copy.
+2. The Polarize.Tech post "Can a $70 board tell me I'm wrong?" states SPEC figures this repo
+   defines (the default µV per count, the datasheet figure, the analog band, the converter bits,
+   the declared rate), and the README shows photos taken from it. Each shared spec figure must
+   appear in the post as the code has it, each photo must be byte-identical to the post's copy,
+   and the post must link to this repo.
+
+The post's measured results for its board (noise, rate error) are findings, not constants of this
+tool, so they are not checked here: they live with the research, not in the code.
 
 The post lives in the polarize.tech site repo. It is found through `$OLIMEX_BLOG_POST`, else as a
 sibling checkout `../polarize.tech`. If neither exists, part 2 says SKIP.
@@ -23,7 +28,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(REPO / "apps" / "server"), str(REPO / "apps" / "web")]
 
-import experimental  # noqa: E402
 import hookup  # noqa: E402
 import rig  # noqa: E402
 
@@ -51,11 +55,6 @@ def num(x):
     return f"{x:g}"
 
 
-def nv(x):
-    """The post rounds nV to whole numbers: 156.7 -> '157'."""
-    return str(round(x))
-
-
 def find_post():
     env = os.environ.get("OLIMEX_BLOG_POST")
     if env:
@@ -75,15 +74,12 @@ if not post_path.is_file():
 else:
     post = post_path.read_text()
     site = post_path.parents[1]
-    noise = experimental.NOISE_NV_AT_40HZ
     facts = [
-        ("µV per count", f"{num(rig.UV_PER_COUNT)} µV/count"),
+        ("default µV per count", f"{num(rig.UV_PER_COUNT)} µV/count"),
         ("datasheet µV per count", f"implies {num(rig.UV_PER_COUNT_DATASHEET)}"),
         ("analog band", f"{num(rig.FRONT_END_HP_HZ)}–{num(rig.FRONT_END_LP_HZ)} Hz"),
         ("converter bits", f"{rig.ADC_BITS}-bit"),
         ("declared rate", f"{num(rig.NOMINAL_RATE_HZ)} Hz"),
-        ("40 Hz noise median", f"{nv(noise['median'])} nV"),
-        ("40 Hz noise range", f"{nv(noise['min'])}–{nv(noise['max'])} nV"),
     ]
     for label, text in facts:
         check(text in post, f"{label}: post says '{text}'")

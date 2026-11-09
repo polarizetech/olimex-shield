@@ -1,0 +1,15 @@
+{
+  "scaffold": "v0.12.0",
+  "adopted": true,
+  "files": {
+    ".claude/disciplines.md": "a8739ba86cb08dff9984ddf4fbe66cf1a17c78839ea0236e6fc598f3175bf034",
+    ".claude/agents/scout.md": "441f4a425368d9ce5f5967e3130ccca6d9813308b7e9a3ec26e5f97293482dd8",
+    ".claude/agents/computational-engineer.md": "21e54c180974b8bb1706185283c06f7b06b4d1864a44bd3d886de7e597baa092",
+    ".claude/agents/mathematician.md": "d00b61558b0ecb8b83922bd365dcc0925f05ba984c86637c1a4cba0d4df746ce",
+    ".claude/agents/designer.md": "c2df8947a3e31c58e68a4871702c6b95bb1c30f6904b81ba47703edb0e77d42c",
+    ".claude/agents/frontend-developer.md": "b352a683f717a21f0cfde91d717e4a29ded976a6d9c6868447036f4fa6348571",
+    ".claude/agents/researcher.md": "bf978bbc295807220d8c38f9b8e2573850618f0321ef8fe36bb197e3bde0514d",
+    ".claude/agents/analyst.md": "d52fd5c00069d9f60e1c7b4ddc4314304b22fda2300324d4c8238c0d84187ff7",
+    ".claude/agents/science-writer.md": "cab3cf4e9a47a3fa64feda761575e36f8f6b1cc08118c32d8fed41b21527bd1a"
+  }
+}

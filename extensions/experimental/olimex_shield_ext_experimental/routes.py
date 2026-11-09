@@ -1,4 +1,4 @@
-"""experimental.py -- every EXPERIMENTAL route and figure the bridge serves, in one place.
+"""The routes behind `olimex_shield_ext_experimental`: every EXPERIMENTAL route and figure.
 
 Nothing here is an established method for this hardware (a 10-bit, single-channel hobby
 amplifier whose microvolt scale is not externally verified). See docs/experimental.md.
@@ -10,18 +10,22 @@ What lives here:
     atlas (`/predict`, `/montage`, `/simulate`, `/atlas/reference`, `/claims`). The tools are
     found through `$OLIMEX_TOOLS` (or by walking up to a directory holding a tools
     `REGISTRY.md`); without them every route here answers 503 "not installed";
-  * this rig's nV noise figures and the RECALLED table, which only those routes use.
+  * the optional RIG PROFILE: a board's noise floor (and optionally its scale), supplied by the
+    user as a JSON file named by `$OLIMEX_RIG_PROFILE`. This tool ships no board's figures; with
+    no profile and no figure in the request, the routes that need one say so instead of
+    inventing it (`GET /rig/profile` reports what is configured).
 
 Every response from here carries `"experimental": true` and a short `"note"`, including the
 503s, so a client can never render one of these numbers as if it were core.
 
-THE DEPENDENCY RUNS ONE WAY. `serve.py` imports this module inside a guard; nothing in the
-acquisition path (`SerialDaemon`, `quality`, `timebase`, `durability`, `sessions`) imports it.
+THE DEPENDENCY RUNS ONE WAY. The bridge never imports this package by name: it finds it through
+`extensions.discover()` and serves `ROUTES`. Nothing in the acquisition path imports it.
 Acquisition is the job that is not allowed to fail, and an analysis tool that fails to import
 must not be able to take a serial port down mid-session.
 """
 
 import importlib.util as _ilu
+import json
 import os
 import sys
 
@@ -46,65 +50,89 @@ def mark(obj):
     return out
 
 
-# ------------------------------------------------------------------ this rig's figures (EXP) --
-# These depend on the unverified uV/count scale (rig.UV_PER_COUNT_PROVENANCE) and on private
-# captures that are not in this repo, and they are only consumed by the experimental routes.
+# --------------------------------------------------------------------- the rig profile (EXP) --
+# A board's noise floor is a MEASUREMENT of that board, so it is never a constant of this tool.
+# The user supplies it -- in each request, or once in a JSON file named by $OLIMEX_RIG_PROFILE:
+#
+#   {
+#     "noise_floor_uv_rms": <number>,     # required: YOUR board's in-band noise floor, uV RMS
+#     "provenance": "MEASURED",           # MEASURED | DATASHEET | RECALLED-VERIFY (the default)
+#     "uv_per_count": <number>,           # optional: the scale that floor was measured with
+#     "how_measured": "<free text>",      # optional: e.g. shorted inputs, resistor, duration, band
+#     "notes": "<free text>"              # optional; anything else is kept and echoed back
+#   }
+#
+# Only "MEASURED" can support a verdict in the companion noise-budget tool; anything else yields
+# the shape of the answer, not the answer. See docs/experimental.md.
 
-#: Stated in voice, NEVER verified against the Olimex SHIELD-EKG-EMG datasheet or the Arduino ADC
-#: specification. Present so the unknown is explicit and callable; tagged so it cannot be used as if
-#: it were measured. Re-derive before either number appears in anything.
-RECALLED = {
-    "noise_floor_uv_rms": 34.0,
-    "uv_per_count": 8.0,
-    "provenance": "RECALLED-VERIFY",
-    "corpus_eligible": False,
-    "experimental": True,
-    "how_to_verify": "Short the inputs through a resistor matching realistic electrode-skin "
-    "impedance, record for several minutes with the acquisition service, and take "
-    "the RMS in the target band. Datasheet second, measured first — the datasheet "
-    "figure is not this rig's figure at this impedance.",
-}
+RIG_PROFILE_ENV = "OLIMEX_RIG_PROFILE"
+PROFILE_PROVENANCES = ("MEASURED", "DATASHEET", "RECALLED-VERIFY")
+NO_PROFILE = (
+    "no rig profile is configured: pass `noise_floor_uv_rms` (and `provenance`) in the request, "
+    "or set $OLIMEX_RIG_PROFILE to a JSON file describing your board (docs/experimental.md). "
+    "This tool ships no board's noise figures."
+)
 
-#: In-band noise at 40 Hz over a 60 s dwell, from six private captures
-#: (validation/VALIDATION.md). EXPERIMENTAL; the 11.7x spread is NOT attributed.
-NOISE_NV_AT_40HZ = {
-    "median": 156.7,
-    "min": 64.3,
-    "max": 750.2,
-    "experimental": True,
-}  # corrected 2026-09-13; was 238/65/750
 
-#: Computed on ONE capture (the first with >40 s of baseline, the 750 nV one), not on the median.
-SMALLEST_DETECTABLE_NV_IN_10MIN = 712.0
+class NoRigProfile(ValueError):
+    """A route needed a noise floor and neither the request nor a rig profile supplied one."""
 
-# Measured 2026-08-17 from this rig's own private captures (not in this repo; 6 usable sessions,
-# Oz-Cz, 250/256 Hz) by validation/rig_noise_floor.py. Aggregate statistics; no subject data.
-MEASURED_RIG = {
-    "uv_per_count": 7.9,
-    "uv_per_count_provenance": "the 7.9 documented in all 8 session sidecars, which came from "
-    "the shield's built-in cal signal at its nominal amplitude; consistent, but not an "
-    "independent or external verification.",
-    # The number that actually governs detection. A broadband RMS is NOT this number: real EEG is
-    # drift-dominated, and on these captures the broadband figure over-estimated the noise at 40 Hz
-    # by 3.5-24x in amplitude (median ~15x). Quote this one, and quote it WITH its dwell.
-    # CORRECTED 2026-09-13: this block said median 238 nV and 20-90x. 238 was the upper-middle of
-    # six values (rig_noise_floor.py indexed sorted()[n//2]) and "90" was a hard-coded literal in
-    # that script's print. Recomputed from the same six captures.
-    "in_band_noise_nv_at_40hz_60s": NOISE_NV_AT_40HZ["median"],
-    "in_band_noise_nv_range": (NOISE_NV_AT_40HZ["min"], NOISE_NV_AT_40HZ["max"]),
-    "in_band_noise_provenance": "median across 6 sessions of 60 s pre-stimulus baseline, via "
-    "neighbouring-bin estimation at 40 Hz; scaled by the unverified uV/count.",
-    "smallest_detectable_nv_in_10min": SMALLEST_DETECTABLE_NV_IN_10MIN,
-    "mains_hz": 60.0,
-    "note": "The 11.7x spread across sessions (64-750 nV) is larger than any algorithmic factor in "
-    "this tool. It was previously attributed to electrode preparation; the sidecars do not "
-    "support that attribution. The one capture scored good-contact (alpha SNR 36) has the "
-    "HIGHEST 40 Hz figure, and the one flagged as implausibly small sits mid-range, so this is "
-    "in-band power of a scalp recording (EEG and scalp EMG included), not instrument noise. "
-    "No shorted-input measurement has been made. CORRECTED 2026-09-13.",
-    "corpus_eligible": True,
-    "experimental": True,
-}
+
+def load_rig_profile():
+    """(profile, error). `profile` is None when nothing is configured or the file is unusable;
+    `error` says why a configured file was refused. Re-read on every call, so editing the file
+    needs no restart."""
+    path = os.environ.get(RIG_PROFILE_ENV)
+    if not path:
+        return None, None
+    try:
+        with open(os.path.expanduser(path), encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, ValueError) as e:
+        return None, f"${RIG_PROFILE_ENV} = {path!r} could not be read as JSON: {e}"
+    if not isinstance(raw, dict):
+        return None, f"${RIG_PROFILE_ENV} must hold a JSON object"
+    try:
+        floor = float(raw["noise_floor_uv_rms"])
+    except (KeyError, TypeError, ValueError):
+        return None, f"${RIG_PROFILE_ENV} needs a numeric `noise_floor_uv_rms`"
+    if not (0 < floor < float("inf")):
+        return None, "`noise_floor_uv_rms` must be positive"
+    prov = raw.get("provenance", "RECALLED-VERIFY")
+    if prov not in PROFILE_PROVENANCES:
+        return None, f"`provenance` must be one of {list(PROFILE_PROVENANCES)}, not {prov!r}"
+    out = dict(raw)
+    out.update(noise_floor_uv_rms=floor, provenance=prov, source=path, experimental=True)
+    return out, None
+
+
+def rig_profile_status():
+    """What GET /rig/profile answers: the configured profile, or a plain statement that none is."""
+    prof, err = load_rig_profile()
+    if prof is not None:
+        return {"configured": True, "profile": prof}
+    out = {"configured": False, "profile": None, "reading": NO_PROFILE}
+    if err:
+        out["error"] = err
+    return out
+
+
+def _floor(body):
+    """(noise_floor_uv_rms, provenance, uv_per_count, basis) from the request, else the profile."""
+    if body.get("noise_floor_uv_rms") is not None:
+        return (
+            float(body["noise_floor_uv_rms"]),
+            body.get("provenance", "RECALLED-VERIFY"),
+            _opt(body, "uv_per_count"),
+            "request",
+        )
+    prof, err = load_rig_profile()
+    if prof is None:
+        raise NoRigProfile(NO_PROFILE + (f" ({err})" if err else ""))
+    upc = _opt(body, "uv_per_count")
+    if upc is None and prof.get("uv_per_count") is not None:
+        upc = float(prof["uv_per_count"])
+    return prof["noise_floor_uv_rms"], prof["provenance"], upc, f"rig profile ({prof['source']})"
 
 
 # ------------------------------------------------------------------- optional analysis tools --
@@ -289,15 +317,15 @@ def atlas_reference():
 
 
 def extract_reference():
-    """What a client needs to call the extraction endpoints correctly, including the two rig
-    figures that are RECALLED-VERIFY rather than measured."""
+    """What a client needs to call the extraction endpoints correctly, including whatever rig
+    profile the user configured (or the statement that none is)."""
     return {
         "syncSources": extract.SYNC_SOURCES,
         "hardwareControls": extract.HARDWARE_CONTROLS,
         "artifactLatencyFloorMs": extract.ARTIFACT_LATENCY_MS,
         "provenance": noise_budget.PROVENANCE,
         "verdictTiers": sorted(noise_budget.VERDICT_TIERS),
-        "recalledRigFigures": RECALLED,
+        "rigProfile": rig_profile_status(),
     }
 
 
@@ -327,7 +355,7 @@ def _opt(body, key):
 
 # ------------------------------------------------------------------------------- routes --
 
-GET_ROUTES = ("/claims", "/atlas/reference", "/extract/reference")
+GET_ROUTES = ("/claims", "/atlas/reference", "/extract/reference", "/rig/profile")
 ATLAS_POST = ("/predict", "/montage", "/simulate")
 DETECTION_POST = (
     "/integration-check",
@@ -339,7 +367,7 @@ DETECTION_POST = (
     "/detection-curve",
     "/rate-trade",
 )
-ROUTES = GET_ROUTES + tuple("POST " + p for p in ATLAS_POST + DETECTION_POST)
+ROUTE_NAMES = GET_ROUTES + tuple("POST " + p for p in ATLAS_POST + DETECTION_POST)
 
 
 def is_route(path):
@@ -354,6 +382,9 @@ def is_route(path):
 
 def handle_get(path):
     """(status, body) for an experimental GET route, or None if `path` is not one."""
+    if path == "/rig/profile":
+        # Needs no companion tool: it only reports what the user configured.
+        return 200, mark(rig_profile_status())
     if path == "/claims":
         if not (_HAVE_ATLAS or _HAVE_DETECTION):
             return 503, _missing("the atlas and signal-detection", _ATLAS_ERROR)
@@ -383,7 +414,10 @@ def handle_post(path, body, *, samples_for, rate_for):
     if path in DETECTION_POST or path.startswith("/extract"):
         if not _HAVE_DETECTION:
             return 503, _missing("signal-detection", _DETECTION_ERROR)
-        out = _detection_post(path, body, samples_for, rate_for)
+        try:
+            out = _detection_post(path, body, samples_for, rate_for)
+        except NoRigProfile as e:
+            return 400, mark({"error": str(e), "rig_profile": rig_profile_status()})
         if out is None:
             return 404, mark({"error": "not found"})
         return 200, mark(out)
@@ -435,27 +469,31 @@ def _detection_post(path, body, samples_for, rate_for):
             sustain_floor=_opt(body, "sustain_floor"),
         )
     if path == "/noise-budget":
-        return noise_budget.budget(
+        floor, prov, upc, basis = _floor(body)
+        out = noise_budget.budget(
             float(body["target_nv"]),
-            float(body["noise_floor_uv_rms"]),
-            body.get("provenance", "RECALLED-VERIFY"),
+            floor,
+            prov,
             rate_hz=float(body.get("rate", DEFAULT_RATE)),
             snr_required=float(body.get("snr_required", 3.0)),
             sustain_window_s=_opt(body, "sustain_window_s"),
-            uv_per_count=_opt(body, "uv_per_count"),
+            uv_per_count=upc,
         )
+        return dict(out, noise_floor_basis=basis)
     if path == "/detection-curve":
-        return _tone().detection_curve(
-            float(body["noise_floor_uv_rms"]),
-            body.get("provenance", "RECALLED-VERIFY"),
+        floor, prov, upc, basis = _floor(body)
+        out = _tone().detection_curve(
+            floor,
+            prov,
             rate_hz=float(body.get("rate", DEFAULT_RATE)),
             ref_hz=float(body.get("ref_hz", 40.0)),
             dwells_s=tuple(body.get("dwells_s", (1.0, 4.0, 16.0))),
             trials=int(body.get("trials", 8)),
             alpha=float(body.get("alpha", 0.01)),
-            uv_per_count=_opt(body, "uv_per_count"),
+            uv_per_count=upc,
             dither_probe=bool(body.get("dither_probe", False)),
         )
+        return dict(out, noise_floor_basis=basis) if isinstance(out, dict) else out
 
     rate, rate_basis = rate_for(body)
     sync = body.get("sync", "undeclared")
@@ -511,3 +549,39 @@ def _detection_post(path, body, samples_for, rate_for):
             bank, controls_run=body.get("controls_run", []), sync=sync
         )
     return out
+
+
+# ------------------------------------------------------------------ the bridge contract --
+# {(method, path): handler(body, ctx) -> (status, obj)}. See docs/EXTENSIONS.md.
+
+
+def _get_handler(path):
+    def handler(_query, _ctx):
+        return handle_get(path)
+
+    handler.__name__ = "get_" + path.strip("/").replace("/", "_").replace("-", "_")
+    return handler
+
+
+def _post_handler(path):
+    def handler(body, ctx):
+        return handle_post(path, body, samples_for=ctx.samples_for, rate_for=ctx.rate_for)
+
+    handler.__name__ = "post_" + path.strip("/").replace("/", "_").replace("-", "_")
+    return handler
+
+
+ROUTE_TABLE = {("GET", p): _get_handler(p) for p in GET_ROUTES}
+ROUTE_TABLE.update({("POST", p): _post_handler(p) for p in ATLAS_POST + DETECTION_POST})
+
+
+def health():
+    """What /health shows for this extension: which companion tools were found, and where."""
+    return {
+        "atlas": _HAVE_ATLAS,
+        "atlasError": _ATLAS_ERROR,
+        "detection": _HAVE_DETECTION,
+        "detectionError": _DETECTION_ERROR,
+        "toolsDir": TOOLS_DIR,
+        "rigProfile": rig_profile_status()["configured"],
+    }

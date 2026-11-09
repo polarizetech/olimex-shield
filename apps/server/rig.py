@@ -1,4 +1,4 @@
-"""rig.py -- what the hardware on this desk actually is, as numbers other code can import.
+"""rig.py -- the board's specification and the sketch's settings, as numbers other code can import.
 
 STDLIB ONLY. Pure constants and one first-order response model; no device, no writes, and
 nothing here may import anything else from this tool (`dev_check.py` asserts it), so a
@@ -6,15 +6,17 @@ client can read the rig's parameters without pulling in the acquisition daemon.
 
 WHY IT LIVES HERE: the bridge holds the serial port as an exclusive resource, and the device's
 parameters belong beside the process that owns the device. Each number below says where it came
-from: MEASURED on the real board (RIG.md), NOMINAL (a manufacturer figure), or a configuration.
+from: the manufacturer (NOMINAL / datasheet), the flashed sketch, or a configurable default.
+Nothing here is a measurement of any particular board: calibrate yours, and keep what you measure
+with your own research records, not in this tool.
 
 *** THE FACT MOST CLIENTS GET WRONG. ***
 The 0.16 Hz high-pass and the 40 Hz low-pass are in SILICON, ahead of the converter. No
 sample rate, no dwell, no averaging and no filter choice recovers anything they removed.
 `carries()` exists so a client asks that question before a session rather than after one.
 
-The rig noise figures in nV (MEASURED_RIG, NOISE_NV_AT_40HZ) and the RECALLED table are
-EXPERIMENTAL and live in `experimental.py`, beside the routes that use them.
+A board's noise floor is not a constant of this tool. The experimental routes read it from the
+request or from a user-supplied profile (`$OLIMEX_RIG_PROFILE`, see docs/experimental.md).
 
 KNOWN DUPLICATION, recorded rather than hidden: an earlier internal client holds its own
 copies of FRONT_END_HP_HZ / FRONT_END_LP_HZ / UV_PER_COUNT / NOMINAL_RATE_HZ and a richer
@@ -26,40 +28,65 @@ import math
 import os
 
 PORT_HINT = "/dev/cu.usbmodem*"
-BAUD = 115200  # MEASURED. Not 57600 -- the OpenEEG guess cost the first probe.
-# 250.0 is what the board's OWN clock says (t_us steps of 4000), and that is circular: the board's
-# clock is the thing in question. Against the host clock the same board ran at -644 ppm one
-# morning and -685 ppm that afternoon (RIG.md, 2026-09-15) -- it DRIFTS, so no constant here can
-# be the measured rate. Kept at 250 because every consumer's arithmetic assumes it. Anything doing
-# LOCK-IN detection must use the bridge's live measurement instead: `/status` -> `rateMeasured`
-# (apps/server/timebase.py). At -644 ppm a 60 Hz lock-in nulls a 40 dB line within 40 s.
+BAUD = 115200  # what the sketch opens the port at (eeg_stream.ino). Not the OpenEEG 57600.
+# 250.0 is the DECLARED rate: what the sketch schedules off the board's own `micros()`, which is
+# circular -- the board's clock is the thing in question. Boards commonly run hundreds of ppm off
+# nominal, and the error drifts, so no constant here can be the measured rate. Kept at 250
+# because every consumer's arithmetic assumes it. Anything doing LOCK-IN detection must use the
+# bridge's live measurement instead: `/status` -> `rateMeasured` (apps/server/timebase.py). A few
+# hundred ppm moves a 60 Hz line by tens of mHz, enough for a lock-in at the nominal frequency to
+# average it toward zero over tens of seconds.
 NOMINAL_RATE_HZ = 250.0
-#: A SNAPSHOT, not a value to use: the first host-clock measurement (123 s, 2026-09-15 AM). It was
-#: 41 ppm out of date within hours. Kept only so the magnitude is on record next to the constant.
-RATE_ERROR_PPM_SNAPSHOT = -644
 ADC_BITS = 10
 ADC_MIN, ADC_MAX = 0.0, 1023.0
 ADC_MID = 511.5
 
-#: NOT EXTERNALLY VERIFIED. 7.9 uV/count was derived in an earlier internal app from the shield's
-#: BUILT-IN calibration square wave: its nominal ~250 uV peak-to-peak read as ~31.6 counts, and
-#: 250 / 31.6 = 7.9. The cal amplitude is the manufacturer's NOMINAL figure; nobody has checked it
-#: (or this scale) with an externally injected signal of known amplitude. The same 7.9 appears in
-#: every sidecar that app wrote, which is consistency, not confirmation. The datasheet gain implies
-#: 1.72; the 4.6x disagreement is DECLARED, not resolved -- it decides whether 5 uV is 0.6 or 2.9
-#: counts. Every microvolt figure in this repo inherits this uncertainty.
+#: The DEFAULT scale, NOT externally verified: from one board's built-in calibration square wave
+#: at its nominal amplitude (~250 uV peak-to-peak read as ~31.6 counts). The shield's gain trimmer
+#: differs per board -- calibrate yours with an externally injected signal of known amplitude and
+#: set `$OLIMEX_UV_PER_COUNT` (or send `uv_per_count` with a session). The datasheet gain implies
+#: 1.72; the disagreement is DECLARED, not resolved. Every microvolt figure inherits this choice,
+#: and sessions and BIDS exports record which scale was used (`uv_per_count_in_use()`).
 UV_PER_COUNT = 7.9
 UV_PER_COUNT_PROVENANCE = (
-    "from the shield's built-in cal signal, nominal amplitude (~250 uV p-p read as ~31.6 counts); "
-    "not externally verified. The datasheet gain implies 1.72 uV/count."
+    "default from one board's built-in cal signal at nominal amplitude (~250 uV p-p read as "
+    "~31.6 counts); not externally verified. The gain trimmer differs per board -- calibrate "
+    "yours. The datasheet gain implies 1.72 uV/count."
 )
 UV_PER_COUNT_DATASHEET = 1.72
+UV_PER_COUNT_ENV = "OLIMEX_UV_PER_COUNT"
+
+
+def configured_uv_per_count():
+    """The scale from `$OLIMEX_UV_PER_COUNT`, or None when it is unset or not a positive number."""
+    v = os.environ.get(UV_PER_COUNT_ENV)
+    try:
+        f = float(v) if v not in (None, "") else None
+    except ValueError:
+        return None
+    return f if f and f > 0 and math.isfinite(f) else None
+
+
+def uv_per_count_in_use():
+    """(uV per count, basis, provenance) to scale with when a session names no scale of its own.
+
+    `$OLIMEX_UV_PER_COUNT` wins over the default, and the basis says which one it was.
+    """
+    env = configured_uv_per_count()
+    if env is not None:
+        return (
+            env,
+            f"${UV_PER_COUNT_ENV} = {env:g}",
+            f"set by the operator through ${UV_PER_COUNT_ENV}; not checked by this tool",
+        )
+    return UV_PER_COUNT, f"rig.UV_PER_COUNT default = {UV_PER_COUNT:g}", UV_PER_COUNT_PROVENANCE
+
 
 FRONT_END_HP_HZ = 0.16  # first-order input high-pass, in silicon, BEFORE the ADC
 FRONT_END_LP_HZ = 40.0  # low-pass, also before the ADC
 HP_TAU_S = 1.0 / (2.0 * math.pi * FRONT_END_HP_HZ)  # 0.9947 s
 
-#: The BENCH's mains frequency (this desk is on a 60 Hz grid; RIG.md measured 60 Hz at +32.2 dB).
+#: A fallback mains frequency (a 60 Hz grid). Set `$OLIMEX_MAINS_HZ` for yours.
 #: A default for the contact check only when nothing better is configured -- never written into an
 #: export as if it were a fact about someone else's recording. See `configured_mains_hz()`.
 MAINS_HZ = 60.0
@@ -80,7 +107,7 @@ def configured_mains_hz():
     return f if f and f > 0 else None
 
 
-SOURCE = "apps/server/RIG.md -- MEASURED on this board unless a constant says otherwise"
+SOURCE = "apps/server/rig.py -- manufacturer nominal figures and the sketch's declared settings"
 
 
 def highpass_gain(f_hz: float) -> float:

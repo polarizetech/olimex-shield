@@ -26,6 +26,7 @@ browser session is an exact, contiguous slice of its black box, starting at samp
 | `source` | `electrode`, `synthetic` or `replay`. A synthetic session carries `synthetic_warning` and cannot lose it. |
 | `readout`, `montage`, `site`, `front_end` | what was measured, where, and whether the board could carry it |
 | `rate_hz` | the DECLARED sample rate. Tags and sample indices use this clock. |
+| `uv_per_count`, `uv_per_count_basis` | the µV-per-count scale the session was recorded against (`caller` or `$OLIMEX_UV_PER_COUNT`), or null: the export then uses the tool's default and says so |
 | `rate_measured_hz`, `rate_error_ppm`, `rate_basis` | the bridge's host-clock measurement of the board's real rate, added after Stop by `annotate()` |
 | `effective_rate_hz` | samples ÷ wall-clock seconds. Contaminated by browser throttling; kept so nobody mistakes it for a resample. |
 | `electrodes_on_at` | when the operator confirmed the electrodes were on (the hookup dialog), not when Record was pressed |
@@ -79,9 +80,10 @@ python3 apps/server/bids.py <stamp> exports/bids --subject 01 --task rest
 
 This writes EEG-BIDS 1.9.0 with BrainVision data files.
 
-- **Units** are µV: (count − session median) × `uv_per_count`. The board is AC-coupled in
-  silicon, so the median is ADC bias, not physiology. The scaling used is written into the
-  sidecar as `Scaling`.
+- **Units** are µV: (count − session median) × `uv_per_count`: the session's, else
+  `$OLIMEX_UV_PER_COUNT`, else the default 7.9 (not externally verified; calibrate your board).
+  The board is AC-coupled in silicon, so the median is ADC bias, not physiology. The scaling used
+  is written into the sidecar as `Scaling` and `ScalingProvenance`.
 - **`HardwareFilters`** holds the board's 0.16–40 Hz analog band.
 - **`SamplingFrequency`** is the declared rate. **`SamplingFrequencyMeasured`** is the bridge's
   measurement, when the session has one.

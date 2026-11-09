@@ -20,6 +20,10 @@ SUITES = [
     ("placement", ["apps/web/placement/dev_check.py"]),
     ("workbench", ["apps/web/dev_check.py"]),
     ("docs+blog", ["scripts/check_docs.py"]),
+    # Extensions: each in-repo extension's own gate, then the contract that holds the version,
+    # the catalogue, the extensions and the import direction together (docs/EXTENSIONS.md).
+    ("ext-experimental", ["extensions/experimental/dev_check.py"]),
+    ("contract", ["-m", "unittest", "tests/test_contract.py"]),
 ]
 
 failed = []

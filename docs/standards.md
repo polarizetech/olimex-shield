@@ -52,12 +52,12 @@ against published values. The same shape of study for this board:
    - a 40 Hz auditory steady-state response;
    - an N1/P2 to tones;
    - eyes-closed alpha.
-2. Report the agreement, the noise floor (`apps/server/validation/VALIDATION.md` already has it:
-   median 157 nV at 40 Hz over 60 s; corrected 2026-09-13 from 238) and the measured clock error.
-3. Pre-register the analysis as an experiment (see [`versioning.md`](versioning.md)).
+2. Report the agreement, the shorted-input noise floor and the measured clock error.
+3. Preregister the analysis as an experiment in your research repo, citing the tool's `model-v*`
+   tag (see [`versioning.md`](versioning.md)).
 
-**Nothing here has yet recorded a response to a known stimulus.** The noise is characterised;
-detection is not shown.
+**This tool does not itself show that a response to a known stimulus can be recovered.** That is
+what such a study would establish, for the board it was run on.
 
 ### JOSS / pyOpenSci review
 
