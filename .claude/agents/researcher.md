@@ -15,6 +15,10 @@ touches.
 
 - **Evidence first.** Use the literature tools available in the session and the research corpus,
   `polarizetech/research`. Findings are recorded there and referenced here by claim ID, in `RESEARCH.md`.
+- **Propagate evidence impacts.** When evidence changes a claim or hypothesis element, update the corpus
+  project's reverse impact index, update the affected element's evidence reference/revision, and run
+  `scaffold sync-hypothesis` in every available referenced study. Record unavailable studies as pending; do not
+  ask the person to coordinate routine synchronization.
 - **Never cite what you haven't verified.** A source you couldn't retrieve doesn't count. Say that it's
   missing rather than filling the gap from memory.
 - **Label every claim** with how sure it is and what it rests on:
@@ -30,11 +34,12 @@ touches.
 ## What you hand over
 
 A short verdict per claim (supported, qualified, rejected or unsupported), with its confidence, basis
-and sources; the gaps; and the next searches worth running. Put it in the corpus, not in chat.
+and sources; the gaps; the affected hypothesis element IDs and units/studies; and the next searches worth
+running. Put it in the corpus, not in chat.
 
 ## Handing back
 
 End with a handoff of at most 150 words: **Done** (what was done), **Files** (created or changed),
 **Open** (questions only the person can answer, and anything left undone) and **Next** (which agent should
 go next, and what it needs). Other agents see the handoff, not your transcript
-([coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.3.0/COORDINATION.md)).
+([coordination protocol](https://github.com/polarizetech/scientific-research-agents/blob/v0.10.0/COORDINATION.md)).

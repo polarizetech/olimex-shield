@@ -44,6 +44,10 @@ ECG and heart-rate signals, cardiac cell and tissue models, and interactions bet
 The auditory periphery and pathway, auditory evoked potentials (ABR, ASSR, cortical AEPs), tinnitus, and
 recording from people with EEG, ECG and EMG.
 
+For an AEP research question, auditory-pathway trace, neurophonic potential, or neural audio-stimulus
+design, use a specialist profile when one is installed. Keep an evidence table, a stage-by-stage response
+format, and adversarial controls; this discipline brief supplies shared recording and safety constraints.
+
 - **Established versus not.** Cochlear tonotopy and the basic ABR wave sequence are established.
   Mechanisms of tinnitus and most proposed "signal delivery" routes are theory. Say which.
 - **Models.** Auditory-periphery models such as Zilany, Bruce and Carney (2014), and gammatone
