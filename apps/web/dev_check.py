@@ -154,8 +154,9 @@ try:
     )
     ok("...a ground in the montage", any(m["role"] == "ground" for m in g["montage"]))
     ok(
-        "the prep list does not attribute the rig's noise spread to prep",
-        "prep, not software" not in json.dumps(g["prep"]) and "11.7x" in json.dumps(g["prep"]),
+        "the prep list neither attributes noise to prep nor states one rig's findings",
+        "prep, not software" not in json.dumps(g["prep"])
+        and not re.search(r"\d+(\.\d+)?x\b|\bnV\b|captures", json.dumps(g["prep"])),
     )
 
     # --------------------------------------------------------------------- the montages --
@@ -226,7 +227,7 @@ try:
     ok("Stop closes it", code == 200 and r["meta"]["n_samples"] == 500)
     code, r = post(
         "/dataset/annotate",
-        {"stamp": stamp, "rate_measured_hz": 249.83, "rate_basis": "host clock"},
+        {"stamp": stamp, "rate_measured_hz": 249.9, "rate_basis": "host clock"},
     )
     ok("the measured rate is annotated after stop", code == 200)
     code, r = get("/api/sessions")
@@ -253,7 +254,7 @@ try:
         code == 200 and r["header"].endswith("sub-01_task-rest_eeg.vhdr"),
     )
     side = json.loads(Path(r["header"]).with_name("sub-01_task-rest_eeg.json").read_text())
-    ok("...carrying the annotated measured rate", side.get("SamplingFrequencyMeasured") == 249.83)
+    ok("...carrying the annotated measured rate", side.get("SamplingFrequencyMeasured") == 249.9)
     code, r = post("/api/export/bids", {"stamp": stamp, "subject": "Jane Doe"})
     ok(
         "a subject label that could be a name is refused",

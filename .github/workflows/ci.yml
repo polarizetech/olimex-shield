@@ -16,8 +16,11 @@ jobs:
           node-version: "20"
       - name: optional dependency (BIDS read-back)
         run: python -m pip install mne mne-bids
-      - name: every suite
+      - name: every suite (includes the extension gates and tests/test_contract.py)
         run: python scripts/check.py
+      # Enable once the kit's tool-versioning module is installed in .agents/ (TOOL_VERSIONING §9):
+      # - name: release check (version, CITATION.cff, CHANGELOG, tag)
+      #   run: python .agents/tools/release-check
       - name: ruff (lint + format)
         run: python -m pip install ruff && ruff check . && ruff format --check .
   firmware:

@@ -1,12 +1,16 @@
 # olimex-shield
 
+**Kind:** tool · **Stage:** SHIPPED
+
 Record EEG, ECG or EMG with an **Arduino UNO and an Olimex SHIELD-EKG-EMG**, a single-channel
 amplifier that costs about C$75 with the Arduino. This repo holds the sketch that runs on the board, a small
 bridge that reads it over USB and checks whether the signal can be trusted, and a browser workbench to
 watch, record, tag, play back and export to [EEG-BIDS](https://bids-specification.readthedocs.io/).
 
 It was built for the Polarize.Tech post
-[*Can a $70 board tell me I'm wrong?*](https://polarize.tech/blog/can-a-70-dollar-board-tell-me-im-wrong/), which characterises the rig in numbers.
+[*Can a $70 board tell me I'm wrong?*](https://polarize.tech/blog/can-a-70-dollar-board-tell-me-im-wrong/), which characterises one board in numbers.
+This repo is the tool only: it holds no board's measurements. Measure your own
+([Checking your board](apps/olimex-shield/README.md#checking-your-board)).
 
 > **This is not a medical device.** It is a hobby amplifier, and nothing it shows is a diagnosis.
 > Read [Safety](#safety) before you put an electrode on anyone.
@@ -48,20 +52,25 @@ synthetic everywhere it goes, including recordings and exports.
 | | |
 |---|---|
 | Band | 0.16–40 Hz, set in hardware before the converter. Software cannot recover anything outside it. |
-| Sample rate | 250 Hz declared. The bridge measures the real rate, which runs slightly slow and drifts. |
-| Resolution | 10-bit. The µV scale comes from the shield's built-in cal signal at its nominal amplitude and **has not been checked externally** (see [hardware notes](docs/hardware.md)). |
-| Intended for | Resting alpha, ECG rhythm, muscle on/off. None of these is validated against a reference amplifier yet. |
+| Sample rate | 250 Hz declared. Boards run slightly off nominal; the bridge measures it. |
+| Resolution | 10-bit ADC, one differential channel. The default µV scale (7.9 µV/count) **is not externally verified** and the gain differs per board: calibrate yours and set `OLIMEX_UV_PER_COUNT` (see [hardware notes](docs/hardware.md)). |
+| Intended for | Resting alpha, ECG rhythm, muscle on/off. None of these is validated against a reference amplifier by this tool. |
 | Not for | Brainstem responses (they sit far above 40 Hz), skin conductance, or anything clinical. |
 
 ## Documentation
 
-- [Hardware notes](docs/hardware.md): what was measured on this board, and what is still open
+- [Hardware notes](docs/hardware.md): the specification, and what to measure on your own board
 - [Recording, playback, uploads and BIDS export](docs/recording.md)
 - [Standards and roadmap](docs/standards.md)
-- [Versioning and preregistration](docs/versioning.md): how changes to the measuring chain are
-  versioned, and how claims about the rig are predicted before they are tested
-- [Experimental features](docs/experimental.md): analysis that is not established practice
+- [Versioning](docs/versioning.md): releases are tagged `vX.Y.Z`; pin a tag, never a branch, and
+  cite the version you ran in your own preregistered experiments
+- [Experimental features](docs/experimental.md): analysis that is not established practice,
+  served by an extension
+- [Extensions](docs/EXTENSIONS.md): how to build on this tool
 - [Bridge internals](apps/server/README.md)
+- [Every document](docs/INDEX.md). Which repos depend on this tool, and on what, is listed under
+  `[[consumers]]` in [`TOOL.toml`](TOOL.toml); what changed between releases is in
+  [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Safety
 

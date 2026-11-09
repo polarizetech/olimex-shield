@@ -57,24 +57,40 @@ try:
 except Exception:
     _HAVE_PYSERIAL = False
 
-# ------------------------------------------------------------------- experimental analysis --
+# --------------------------------------------------------------------------------- extensions --
 # The lock-in / extraction / integration-check / noise-budget / detection-curve / rate-trade /
-# atlas routes are EXPERIMENTAL and depend on optional companion tools. All of it lives in
-# experimental.py, imported here inside a guard: acquisition never depends on it, because
-# acquisition is the job that cannot be allowed to fail.
+# atlas routes are EXPERIMENTAL and live in an EXTENSION (extensions/experimental), versioned apart
+# from this tool. This process never imports an extension by name: it asks the extension kit
+# (extensions.py) what it discovered and serves the routes those extensions expose. A kit or an
+# extension that fails is reported, and acquisition carries on: acquisition is the job that cannot
+# be allowed to fail.
 try:
-    import experimental
+    import extensions as _ext
 
-    _HAVE_ATLAS, _ATLAS_ERROR = experimental._HAVE_ATLAS, experimental._ATLAS_ERROR
-    _HAVE_DETECTION, _DETECTION_ERROR = experimental._HAVE_DETECTION, experimental._DETECTION_ERROR
-    TOOLS_DIR = experimental.TOOLS_DIR
-    _EXP_FIREWALL = experimental.FIREWALL_ERRORS
+    EXTENSIONS = _ext.discover()
+    _EXT_ERROR = None
 except Exception as _e:  # pragma: no cover - import guard
-    experimental = None
-    _HAVE_ATLAS = _HAVE_DETECTION = False
-    _ATLAS_ERROR = _DETECTION_ERROR = f"experimental.py failed to import: {_e}"
-    TOOLS_DIR = None
-    _EXP_FIREWALL = ()
+    _ext = None
+    EXTENSIONS = []
+    _EXT_ERROR = f"extensions.py failed: {type(_e).__name__}: {_e}"
+
+
+def _ext_call(fn, default):
+    """Call a kit function, never letting it raise into the request handler."""
+    if _ext is None:
+        return default
+    try:
+        return fn()
+    except Exception:  # noqa: BLE001 - a broken extension must not break a core route
+        return default
+
+
+def _route_table():
+    return _ext_call(_ext.route_table, {}) if _ext else {}
+
+
+def _catalog_routes():
+    return _ext_call(_ext.catalog_routes, {}) if _ext else {}
 
 
 class _Missing:
@@ -88,13 +104,9 @@ class _Missing:
         pass
 
 
-def _missing(what, err):
-    if experimental is not None:
-        return experimental._missing(what, err)
-    return {"error": f"{what} is not installed here", "detail": err, "experimental": True}
+_EXT_FIREWALL = _ext_call(_ext.firewall_errors, ()) if _ext else ()
 
-
-_FIREWALL_ERRORS = tuple(set(_EXP_FIREWALL) | {quality.DomainError})
+_FIREWALL_ERRORS = tuple(set(_EXT_FIREWALL) | {quality.DomainError})
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 REC_DIR = os.path.join(APP_ROOT, "recordings")  # self-contained; gitignored
@@ -572,8 +584,9 @@ def _rate_for(body):
 
     A caller that states `rate` owns it -- they supplied the samples and know where they came from.
     For the daemon's OWN ring (`source: "live"`) this process knows better than its constant: the
-    measured rate is used once it exists, because at -644 ppm a lock-in at a nominal frequency nulls
-    a 40 dB line within 40 s (RIG.md, 2026-09-15). Until it exists, the declared rate, labelled so.
+    measured rate is used once it exists, because boards commonly run hundreds of ppm off nominal,
+    and at that error a long lock-in at the nominal frequency averages a strong line toward zero.
+    Until it exists, the declared rate, labelled so.
     """
     if body.get("rate") is not None:
         return float(body["rate"]), "caller"
@@ -616,6 +629,24 @@ def _samples_for(body):
         vals, _total, _actual_from = DAEMON.read_since(max(0, total - want))
         return [float(v) for v in vals]
     raise ValueError('no samples: pass `samples` or `source:"live"` with `seconds`')
+
+
+#: What an extension's route handler is given: the bridge's own helpers, nothing else.
+_CTX = (
+    _ext.Context(samples_for=_samples_for, rate_for=_rate_for, default_rate=DEFAULT_RATE)
+    if _ext
+    else None
+)
+
+
+def _experimental_route_names():
+    """The routes the catalogue marks experimental, as /health has always listed them (a GET as its
+    bare path, a POST as "POST /path"), whether or not their extension is loaded here."""
+    out = []
+    for (method, path), entry in _catalog_routes().items():
+        if entry.get("experimental"):
+            out.append(path if method == "GET" else f"{method} {path}")
+    return out
 
 
 _LOOPBACK_ORIGIN = re.compile(r"^http://(127\.0\.0\.1|localhost|\[::1\])(:\d{1,5})?$")
@@ -747,12 +778,8 @@ class Handler(BaseHTTPRequestHandler):
                 200,
                 {
                     "service": "olimex-shield bridge",
+                    "version": _ext_call(_ext.tool_version, "unknown") if _ext else "unknown",
                     "pyserial": _HAVE_PYSERIAL,
-                    "atlas": _HAVE_ATLAS,
-                    "atlasError": _ATLAS_ERROR,
-                    "detection": _HAVE_DETECTION,
-                    "detectionError": _DETECTION_ERROR,
-                    "toolsDir": TOOLS_DIR,
                     "acquisition": [
                         "/status",
                         "/ports",
@@ -762,31 +789,17 @@ class Handler(BaseHTTPRequestHandler):
                         "/record",
                         "/record/stop",
                     ],
-                    "atlasEndpoints": [
-                        "/atlas/reference",
-                        "/claims",
-                        "POST /predict",
-                        "POST /montage",
-                        "POST /simulate",
-                    ],
                     "session": ["POST /quality", "POST /bands", "POST /spectrum"],
-                    # Everything below this line is EXPERIMENTAL (experimental.py) and needs the
-                    # optional companion tools; see docs/experimental.md.
-                    "experimental": list(experimental.ROUTES) if experimental else [],
                     "ui": (
                         "apps/web (the workbench) -- <signal-panel> + optional <signal-panel-atlas>"
                     ),
-                    "extraction": [
-                        "POST /extract",
-                        "POST /extract/sustain",
-                        "POST /extract/artifact",
-                        "POST /extract/feasibility",
-                        "POST /integration-check",
-                        "POST /noise-budget",
-                        "POST /detection-curve",
-                        "POST /rate-trade",
-                        "GET /extract/reference",
-                    ],
+                    # Everything below comes from EXTENSIONS (docs/EXTENSIONS.md): each one found,
+                    # with its status (ok / incompatible / undeclared / error) and its own health.
+                    # Routes of an experimental extension are listed under `experimental`
+                    # (docs/experimental.md).
+                    "extensions": _ext_call(_ext.health, []) if _ext else [],
+                    "extensionsError": _EXT_ERROR,
+                    "experimental": _experimental_route_names(),
                 },
             )
         if path == "/status":
@@ -808,12 +821,9 @@ class Handler(BaseHTTPRequestHandler):
             # eeg-client.js is served from here so every client shares ONE copy — no drift.
             return self._file(os.path.join(APP_ROOT, name), ctype)
 
-        if experimental is not None:
-            r = experimental.handle_get(path)
-            if r is not None:
-                return self._json(*r)
-        elif path in ("/claims", "/atlas/reference", "/extract/reference"):
-            return self._json(503, _missing("the experimental analysis module", _ATLAS_ERROR))
+        r = self._extension_route("GET", path, self._q())
+        if r is not None:
+            return r
         return self._json(404, {"error": "not found"})
 
     def do_POST(self):
@@ -890,25 +900,12 @@ class Handler(BaseHTTPRequestHandler):
                     ),
                 )
 
-            # ---- EXPERIMENTAL (experimental.py): the atlas and the extraction layer. The
-            # dependency runs THIS way only: they may read the daemon through the two helpers
-            # passed in; the daemon never reads them.
-            if experimental is not None:
-                r = experimental.handle_post(
-                    path, body, samples_for=_samples_for, rate_for=_rate_for
-                )
-                if r is not None:
-                    return self._json(*r)
-            elif path.startswith("/extract") or path in (
-                "/predict",
-                "/montage",
-                "/simulate",
-                "/integration-check",
-                "/noise-budget",
-                "/detection-curve",
-                "/rate-trade",
-            ):
-                return self._json(503, _missing("the experimental analysis module", _ATLAS_ERROR))
+            # ---- EXTENSIONS (the experimental atlas and extraction layer among them). The
+            # dependency runs THIS way only: they may read the daemon through the two helpers in
+            # the Context; the daemon never reads them.
+            r = self._extension_route("POST", path, body)
+            if r is not None:
+                return r
         except KeyError as e:
             return self._err(path, 400, {"error": f"missing required field: {e}"})
         except (ValueError, TypeError) as e:
@@ -929,9 +926,32 @@ class Handler(BaseHTTPRequestHandler):
 
     def _err(self, path, code, obj):
         """An error is still marked experimental when it came from an experimental route."""
-        if experimental is not None and experimental.is_route(path):
-            obj = experimental.mark(obj)
+        mark = _ext_call(lambda: _ext.marker_for(path), None) if _ext else None
+        if mark is not None:
+            with contextlib.suppress(Exception):
+                obj = mark(obj)
         return self._json(code, obj)
+
+    def _extension_route(self, method, path, body):
+        """Serve `method path` from an extension, or None if no extension claims it.
+
+        A loaded extension's handler answers (exceptions propagate to the caller's 400/500 mapping,
+        marked by the extension's own `mark`). A route the catalogue lists for an extension that is
+        not loaded here (absent, incompatible, broken) answers 503 with that extension's status.
+        """
+        hit = _route_table().get((method, path))
+        if hit is not None:
+            _row, _mod, handler = hit
+            if method == "GET":
+                try:
+                    return self._json(*handler(body, _CTX))
+                except Exception as e:  # noqa: BLE001 - do_GET has no outer handler
+                    return self._err(path, 500, {"error": str(e)})
+            return self._json(*handler(body, _CTX))
+        entry = _catalog_routes().get((method, path))
+        if entry is not None:
+            return self._json(503, _ext.unavailable(entry))
+        return None
 
     def _stream(self):
         """SSE: `data: {"from":N,"total":M,"samples":[...]}` plus a ~1 Hz heartbeat."""

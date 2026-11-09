@@ -166,13 +166,13 @@ ok("before the bridge has measured, lock-in uses the declared rate", rt.analysis
 const rateEvents = [];
 rt.addEventListener("signal-rate", (e) => rateEvents.push(e.detail));
 globalThis.fetch = async () => ({ ok: true, json: async () =>
-  ({ rate: 250, rateMeasured: 249.839, rateErrorPpm: -644, rateUncertaintyPpm: 2, rateBasis: "host clock" }) });
+  ({ rate: 250, rateMeasured: 249.9, rateErrorPpm: -400, rateUncertaintyPpm: 2, rateBasis: "host clock" }) });
 await rt._refreshRate();
-ok("once measured, lock-in uses the MEASURED rate", rt.analysisRate === 249.839, String(rt.analysisRate));
+ok("once measured, lock-in uses the MEASURED rate", rt.analysisRate === 249.9, String(rt.analysisRate));
 ok("...but the ring/trace/tag clock keep the declared rate, so no tag moves mid-session",
-   rt.state.rate === 250 && rt.info.rate === 250 && rt.info.rateMeasured === 249.839);
+   rt.state.rate === 250 && rt.info.rate === 250 && rt.info.rateMeasured === 249.9);
 ok("the host is told when the measured rate appears", rateEvents.length === 1
-   && rateEvents[0].errorPpm === -644, JSON.stringify(rateEvents));
+   && rateEvents[0].errorPpm === -400, JSON.stringify(rateEvents));
 await rt._refreshRate();
 ok("...and not told again when nothing changed", rateEvents.length === 1);
 
@@ -281,11 +281,11 @@ ok("the attribute is observed, not read once", SignalPanel.observedAttributes.in
      ro.innerHTML.includes("signal (plausibility heuristic)") && !/impedance<|<dt>contact/.test(ro.innerHTML));
   ok("the alpha SNR is shown with the experimental badge",
      /alpha SNR<\/dt><dd[^>]*>5\.10 <span class="ui-tier sp-beta"/.test(ro.innerHTML), ro.innerHTML);
-  d.state.rateMeasured = 249.839; d.state.rateErrorPpm = -644;
+  d.state.rateMeasured = 249.9; d.state.rateErrorPpm = -400;
   d.state.quality = { level: "marginal", method: "plausibility heuristic" };
   d.drawReadout({ "front end": "reachable" });
   ok("once measured, the measured rate is shown separately with its error",
-     ro.innerHTML.includes("<dt>rate (measured)</dt>") && ro.innerHTML.includes("249.839 Hz (-644 ppm)"));
+     ro.innerHTML.includes("<dt>rate (measured)</dt>") && ro.innerHTML.includes("249.900 Hz (-400 ppm)"));
   ok("no alpha row when the bridge sent none", !ro.innerHTML.includes("alpha SNR"));
   d.drawReadout();
   ok("a host's extra readout fields survive the panel's own redraw", ro.innerHTML.includes("front end"));

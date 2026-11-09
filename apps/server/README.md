@@ -11,8 +11,8 @@ python3 apps/server/serve.py 8140 127.0.0.1
 
 **Acquisition.** Arduino + Olimex SHIELD-EKG-EMG → serial CSV → ring buffer → SSE.
 **One process owns the port; every project is a client.** The flashed firmware source lives at
-[`apps/olimex-shield/eeg_stream/eeg_stream.ino`](../olimex-shield/eeg_stream/eeg_stream.ino) — cross-checked against the live board
-2026-09-14 (see [`../olimex-shield/README.md`](../olimex-shield/README.md) and [`RIG.md`](RIG.md)).
+[`apps/olimex-shield/eeg_stream/eeg_stream.ino`](../olimex-shield/eeg_stream/eeg_stream.ino); how to
+flash it and check your board is in [`../olimex-shield/README.md`](../olimex-shield/README.md).
 
 ```html
 <script src="http://localhost:8140/eeg-client.js"></script>
@@ -25,7 +25,9 @@ python3 apps/server/serve.py 8140 127.0.0.1
 
 **Experimental: the Auditory Response Atlas and the extraction layer.** With the optional companion
 tools installed (`$OLIMEX_TOOLS`, see [`../../docs/experimental.md`](../../docs/experimental.md)),
-this process also serves experimental routes (`experimental.py`): describe what you are about to
+this process also serves experimental routes from the extension `olimex-shield-ext-experimental`
+(`extensions/experimental/`, see [`../../docs/EXTENSIONS.md`](../../docs/EXTENSIONS.md)): describe
+what you are about to
 play into each ear and get back which evoked responses should exist and where to put the
 electrodes, or run a lock-in at a known frequency. Every response says `"experimental": true`.
 

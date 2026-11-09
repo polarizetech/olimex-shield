@@ -1,9 +1,84 @@
 # Changelog
 
-Format: [Keep a Changelog](https://keepachangelog.com/). Changes to the flashed sketch are listed
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html) as
+`.agents/protocols/TOOL_VERSIONING.md` applies them. Changes to the flashed sketch are listed
 under **Board** so a recording can be matched to the firmware it was made with.
 
+A release that changes an output (a recorded or exported number or field, a default constant, a
+file layout a consumer parses) has an `### Outputs changed` section naming what changed and which
+consumers in `TOOL.toml` must re-run; a release that changes none leaves the section out.
+Releases from 0.3.0 on are tagged `vX.Y.Z`; earlier ones were tagged `model-vX.Y.Z`
+(`model-v0.2.0`). Extensions keep their own changelogs (`extensions/<name>/CHANGELOG.md`).
+
 ## [Unreleased]
+
+## [0.3.0] — 2026-09-27
+
+This repo is now the tool only, and adopts the "tool" kind (`TOOL.toml`) and the extension
+pattern. Measurements of a particular board, validation write-ups and the experiment registry
+moved to the maintainer's research repo; the blog post publishes the results. The experimental
+routes moved out of the core into an extension, versioned apart.
+
+### Outputs changed
+- BIDS sidecar `Scaling` and `ScalingProvenance`: now name the scale's basis (the session's
+  `uv_per_count`, `$OLIMEX_UV_PER_COUNT`, or the default) and its provenance, in new wording. The
+  exported samples are unchanged with nothing set (the default is still 7.9 µV/count). The
+  dataset `README`'s Scaling paragraph is reworded to match. Re-run: `olimex-shield-bridge` only
+  if it compares sidecar text (it uses the BIDS export); its numbers are unchanged.
+- `session.json` gains `uv_per_count_basis`; existing keys and values are unchanged. Re-run: none.
+- `rig.RATE_ERROR_PPM_SNAPSHOT` is removed (a measurement of one board, not a constant).
+  `rig.UV_PER_COUNT` is unchanged. Re-run: none.
+
+### Changed (measuring chain)
+- µV per count: 7.9 is now the DEFAULT, overridable with `$OLIMEX_UV_PER_COUNT` or a session's
+  `uv_per_count`. Sessions record `uv_per_count_basis`, and the BIDS `Scaling` /
+  `ScalingProvenance` name the scale actually used. With nothing set, exported numbers are
+  unchanged.
+
+### Changed (experimental; not outputs under TOOL_VERSIONING §7)
+- `apps/server/experimental.py` is now the extension `olimex-shield-ext-experimental`
+  (`extensions/experimental/`, its own version 0.1.0 and changelog, tested against
+  `>=0.3.0,<0.4`). Every URL, request field and response is unchanged, including the
+  `"experimental": true` + `note` marking and the 503 "not installed" answer when the companion
+  tools are absent. If the extension itself is absent or refused, its routes answer 503 with the
+  extension's status.
+- `/noise-budget` and `/detection-curve` take the noise floor from the request or from a
+  user-supplied rig profile (`$OLIMEX_RIG_PROFILE`, schema in `docs/experimental.md`); with
+  neither they answer 400 "no rig profile is configured". New `GET /rig/profile`.
+  `/extract/reference` returns `rigProfile` in place of `recalledRigFigures`.
+  `olimex-shield-bridge` uses these routes: it must supply its rig profile.
+
+### Changed
+- `/health` lists every extension with its status (`ok` / `incompatible` / `undeclared` /
+  `error`) and its own health under `extensions`, and the tool's `version`. The top-level
+  `atlas`, `atlasError`, `detection`, `detectionError` and `toolsDir` keys moved into the
+  experimental extension's `health`; the `atlasEndpoints` and `extraction` lists are replaced by
+  `experimental` (the same routes, as before) and each extension's `routes`.
+- Versioning follows `TOOL_VERSIONING.md`: one version (`pyproject.toml`) mirrored in
+  `CITATION.cff` and `TOOL.toml`, tags `vX.Y.Z`, consumers pin tags. `docs/versioning.md`
+  rewritten.
+
+### Added
+- `TOOL.toml` (kind "tool", stage SHIPPED, public) with the consumers and what each uses.
+- The extension kit, `apps/server/extensions.py` (stdlib, Python 3.9+): `declare()`,
+  `require()`, `discover()`, `loaded()`, the bridge's route contract, and discovery from entry
+  points, the catalogue and `$OLIMEX_EXTENSIONS`. `extensions/catalog.json`,
+  `extensions/_template/`, `docs/EXTENSIONS.md`, `docs/INDEX.md`.
+- `tests/test_contract.py`: one version said four ways, catalogue and extension folders agree,
+  core never imports an extension, the template is valid, no research files. Run by
+  `scripts/check.py`, with the experimental extension's own gate
+  (`extensions/experimental/dev_check.py`).
+- `apps/olimex-shield/README.md` "Checking your board": what to measure on your own board.
+
+### Removed
+- The board-specific figures the tool used to ship: the nV noise table, the recalled rig figures,
+  the rate-error snapshot, the rig measurement log and the validation scripts.
+- `EXPERIMENTS.md`: a tool runs no experiments. A claim about a rig is preregistered in the
+  research repo that makes it. (The kit's `prereg` module is still installed in `.agents/`; it is
+  to be swapped for `tool-versioning`, which also supplies `.agents/tools/release-check`.)
+- `scripts/check_docs.py` no longer compares the post's measured noise figures; it checks spec
+  facts, photos, the repo link and the safety list.
 
 ## [0.2.0] — 2026-09-25
 
@@ -55,7 +130,7 @@ before it, so none is invalidated.
 ### Moved out (to optional companion tools, found via `$OLIMEX_TOOLS`)
 - The Auditory Response Atlas, the extraction layer (lock-in, noise budget), injection curves and
   the acquisition-requirements checks. The workbench shows what depends on them only when they are
-  present. This board's noise figures stayed here.
+  present.
 - The built-in S3 uploader was removed; `storage.py` is a plugin hand-off only.
 - `quality.py` carries its own Goertzel helper so the contact check never depends on an optional tool.
 

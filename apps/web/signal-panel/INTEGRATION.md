@@ -118,8 +118,8 @@ p.addEventListener("signal-disconnected", () => stop());   // port already relea
 across one.
 
 **Doing a lock-in at a known frequency?** Use `p.analysisRate`, not the rate from
-`signal-connected`. The board's clock is ~680 ppm slow and drifts; at the declared 250 Hz a 60 Hz
-line 40 dB above the floor reads "not detected" at 40 s. `analysisRate` is the bridge's live
+`signal-connected`. Boards run hundreds of ppm off nominal and drift; at the declared 250 Hz a
+long lock-in can average even a strong line toward zero. `analysisRate` is the bridge's live
 measurement once it has 30 s, and the declared rate before that — check `p.rateInfo.measured`
 (null until then) and record `p.rateInfo.basis` beside the result. `signal-rate` fires when it
 updates.

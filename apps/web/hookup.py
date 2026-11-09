@@ -70,10 +70,8 @@ SAFETY = [
 ]
 
 #: Prep, in the order it actually has to happen. The last one is the one people skip.
-#: `apps/server/validation/VALIDATION.md` measured the in-band 40 Hz figure across six captures
-#: on this rig: 64-750 nV, an 11.7x spread. That spread is UNATTRIBUTED -- it was once put down
-#: to electrode prep, but the one capture scored good-contact had the HIGHEST value, so the
-#: sidecars do not support that. Good prep is still right; it is not what the data shows.
+#: Good prep is right, but this list makes no claim about how much of a recording's noise it
+#: removes: that is a measurement of a particular rig, and belongs with the research.
 PREP = [
     (
         "Unplug the laptop, and everything plugged into it.",
@@ -110,10 +108,9 @@ PREP = [
     (
         "Watch the plausibility check, not the trace.",
         "A trace can look perfectly plausible at the noise floor. The check is a heuristic on "
-        "the signal (amplitude, mains share, alpha), not an impedance measurement. Measured on "
-        "this rig across six captures, in-band power at 40 Hz spanned 64-750 nV -- an 11.7x "
-        "range whose cause is not yet known: the one capture scored good-contact had the "
-        "highest value. That spread dominates anything this app computes afterwards.",
+        "the signal (amplitude, mains share, alpha), not an impedance measurement. In-band "
+        "power can vary widely between sessions for reasons the check cannot see, and that "
+        "variation carries into anything this app computes afterwards.",
     ),
 ]
 

@@ -48,8 +48,10 @@ section("1. Service — optional tools must not be able to break acquisition")
 
 serve_src = (HERE / "serve.py").read_text()
 ok(
-    "the atlas and detection imports are guarded",
-    "_HAVE_ATLAS" in serve_src and "_HAVE_DETECTION" in serve_src,
+    "extensions come only through the kit, inside a guard (serve.py names no extension)",
+    "import extensions as _ext" in serve_src
+    and "_ext.discover()" in serve_src
+    and "olimex_shield_ext_" not in serve_src,
 )
 ok("...with a stand-in so an error handler cannot itself NameError", "class _Missing" in serve_src)
 ok("a firewall error is a 400, not a 500", "_FIREWALL_ERRORS" in serve_src and "400" in serve_src)
@@ -79,15 +81,20 @@ for gone in ("auditory", "electrodes", "forward", "montage", "claims", "extract"
     )
 ok("bioacq/ does not live in this repo (it is a separate tool)", not (HERE / "bioacq").exists())
 
-# The switch-off, exercised in a clean interpreter with the tools deliberately unreachable.
+# The switch-off, exercised in a clean interpreter with the tools deliberately unreachable. The
+# experimental routes come from an extension found by the kit; the probe reaches them only through
+# the bridge's route table, as a request would.
 _probe = subprocess.run(
     [
         sys.executable,
         "-c",
-        "import json, serve; print(json.dumps([serve._HAVE_ATLAS, serve._HAVE_DETECTION, "
-        "serve._missing('x', 'y')['hint'], serve._missing('x', 'y')['experimental'], "
-        "serve.experimental.handle_get('/claims')[0], "
-        "serve.experimental.handle_post('/extract', {}, samples_for=None, rate_for=None)[1]]))",
+        "import json, serve\n"
+        "t = serve._route_table()\n"
+        "h = {r.get('name'): r for r in serve._ext.health()}['olimex-shield-ext-experimental']\n"
+        "g = t[('GET', '/claims')][2]({}, serve._CTX)\n"
+        "p = t[('POST', '/extract')][2]({}, serve._CTX)\n"
+        "print(json.dumps([h['status'], h['health']['atlas'], h['health']['detection'], "
+        "g[1]['hint'], g[1]['experimental'], g[0], p[1], serve._experimental_route_names()]))",
     ],
     cwd=HERE,
     capture_output=True,
@@ -96,25 +103,73 @@ _probe = subprocess.run(
 )
 _flags = json.loads(_probe.stdout.strip().splitlines()[-1]) if _probe.returncode == 0 else None
 ok(
-    "with no tools present the bridge still imports, and both halves report absent",
-    _flags is not None and _flags[0] is False and _flags[1] is False,
-    _probe.stderr[-200:],
+    "with no tools present the bridge still imports, finds the experimental extension (ok), and "
+    "the extension reports both companion tools absent",
+    _flags is not None and _flags[0] == "ok" and _flags[1] is False and _flags[2] is False,
+    _probe.stderr[-300:],
 )
 ok(
     "...and a missing tool's 503 says where the routes come from",
-    _flags is not None and "auditory-atlas" in _flags[2],
+    _flags is not None and "auditory-atlas" in _flags[3],
 )
 ok(
     "...and is itself marked experimental, GET and POST alike",
     _flags is not None
-    and _flags[3] is True
-    and _flags[4] == 503
-    and _flags[5]["experimental"] is True
-    and "docs/experimental.md" in _flags[5]["note"],
+    and _flags[4] is True
+    and _flags[5] == 503
+    and _flags[6]["experimental"] is True
+    and "docs/experimental.md" in _flags[6]["note"],
+)
+ok(
+    "...and /health still lists every experimental route, in the format it always had",
+    _flags is not None and "/claims" in _flags[7] and "POST /noise-budget" in _flags[7],
 )
 
-import quality  # noqa: E402
 import rig  # noqa: E402
+
+# The same routes when the extension itself is REFUSED (here: the tool pretends to be a release
+# outside the extension's range). The bridge still imports, reports the extension as
+# `incompatible` with the reason, and its catalogued routes answer 503 with that status, still
+# marked experimental -- never a silent 404.
+_refused = subprocess.run(
+    [
+        sys.executable,
+        "-c",
+        "import json, threading, urllib.request, urllib.error\n"
+        "import sessions\n"
+        "sessions.software_version = lambda: '99.0.0'\n"
+        "import serve\n"
+        "srv = serve.ThreadingHTTPServer(('127.0.0.1', 0), serve.Handler)\n"
+        "threading.Thread(target=srv.serve_forever, daemon=True).start()\n"
+        "base = 'http://127.0.0.1:%d' % srv.server_address[1]\n"
+        "req = urllib.request.Request(base + '/noise-budget', data=b'{}')\n"
+        "try:\n"
+        "    urllib.request.urlopen(req, timeout=5); code, body = 200, {}\n"
+        "except urllib.error.HTTPError as e:\n"
+        "    code, body = e.code, json.loads(e.read())\n"
+        "health = json.loads(urllib.request.urlopen(base + '/health', timeout=5).read())\n"
+        "print(json.dumps([code, body, health['extensions']]))\n"
+        "srv.shutdown()",
+    ],
+    cwd=HERE,
+    capture_output=True,
+    text=True,
+)
+_r = json.loads(_refused.stdout.strip().splitlines()[-1]) if _refused.returncode == 0 else None
+ok(
+    "an extension outside its declared range is refused, and /health says so with the reason",
+    _r is not None and _r[2][0]["status"] == "incompatible" and "99.0.0" in _r[2][0]["reason"],
+    _refused.stderr[-300:],
+)
+ok(
+    "...and its routes answer 503 naming the extension's status, still marked experimental",
+    _r is not None
+    and _r[0] == 503
+    and _r[1]["extension"]["status"] == "incompatible"
+    and _r[1]["experimental"] is True,
+    json.dumps(_r)[:300] if _r else "",
+)
+
 
 ok(
     "the contact check does not import any optional tool",
@@ -122,64 +177,33 @@ ok(
         r"^\s*(import|from)\s+(extract|noise_budget)\b", (HERE / "quality.py").read_text(), re.M
     ),
 )
-import experimental  # noqa: E402
 import serve  # noqa: E402
-
-if serve._HAVE_DETECTION:
-    _x = [math.sin(2 * math.pi * 10 * k / FS) + 0.1 * math.cos(k) for k in range(500)]
-    ok(
-        "quality's Goertzel copy is identical to signal-detection's",
-        all(
-            quality._goertzel_power(_x, FS, b, 500)
-            == experimental.extract._goertzel_power(_x, FS, b, 500)
-            for b in (3, 20, 40, 97)
-        ),
-    )
-    ok(
-        "with the tools present, /claims merges both registers",
-        experimental.all_claims()["counts"]["evidence"]
-        == len(experimental.atlas_claims.EVIDENCE) + len(experimental.detection_claims.EVIDENCE),
-    )
-    _code, _body = experimental.handle_get("/claims")
-    ok(
-        "...and every experimental response says it is experimental",
-        _code == 200 and _body["experimental"] is True and _body["note"],
-    )
-else:
-    print("  SKIP Goertzel parity and merged claims -- signal-detection tool not reachable")
 
 # ============================================================ rig constants ========
 section("2. This board's constants")
 ok(
-    "the recalled rig figures are marked not corpus-eligible and carry a how-to-verify",
-    experimental.RECALLED["corpus_eligible"] is False
-    and "datasheet" in experimental.RECALLED["how_to_verify"].lower(),
-)
-ok(
-    "the measured rig figures are corpus-eligible, unlike the recalled ones",
-    experimental.MEASURED_RIG["corpus_eligible"] is True,
-)
-ok(
-    "the nV rig figures and the RECALLED table live in experimental.py, labelled so",
-    not any(hasattr(rig, k) for k in ("MEASURED_RIG", "RECALLED", "NOISE_NV_AT_40HZ"))
-    and all(
-        d.get("experimental") is True
-        for d in (experimental.MEASURED_RIG, experimental.RECALLED, experimental.NOISE_NV_AT_40HZ)
+    "the tool ships no board's measured figures: no noise table, no rate-error snapshot",
+    not any(
+        hasattr(m, k)
+        for m in (rig,)
+        for k in ("MEASURED_RIG", "RECALLED", "NOISE_NV_AT_40HZ", "RATE_ERROR_PPM_SNAPSHOT")
     ),
 )
 _rig_src = (HERE / "rig.py").read_text()
 ok(
-    "µV/count provenance: the built-in cal signal at nominal amplitude, not externally verified",
+    "µV/count provenance: a DEFAULT from a built-in cal signal at nominal amplitude, unverified",
     "built-in cal" in rig.UV_PER_COUNT_PROVENANCE
     and "not externally verified" in rig.UV_PER_COUNT_PROVENANCE
-    and "nominal" in rig.UV_PER_COUNT_PROVENANCE,
+    and "nominal" in rig.UV_PER_COUNT_PROVENANCE
+    and "default" in rig.UV_PER_COUNT_PROVENANCE
+    and "calibrate yours" in rig.UV_PER_COUNT_PROVENANCE,
 )
 ok(
     "...and rig.py no longer claims the circular 'independently recovered' audit",
     "independently recovered" not in _rig_src and "audit_rig" not in _rig_src,
 )
 ok(
-    "...and the scale's value is unchanged (7.9)",
+    "...and the default scale's value is unchanged (7.9), beside the datasheet's 1.72",
     rig.UV_PER_COUNT == 7.9 and rig.UV_PER_COUNT_DATASHEET == 1.72,
 )
 _rig_imports = set()
@@ -201,35 +225,32 @@ ok("...and a non-number is ignored rather than guessed", rig.configured_mains_hz
 os.environ.pop("OLIMEX_MAINS_HZ")
 if _saved_mains is not None:
     os.environ["OLIMEX_MAINS_HZ"] = _saved_mains
-# CORRECTED 2026-09-13: this check used to REQUIRE the note to say electrode preparation dominates.
-# The sidecars contradict that (the good-contact capture has the highest 40 Hz figure), so the
-# check now requires the record to say the spread is NOT instrument noise and is unattributed.
+_saved_upc = os.environ.pop("OLIMEX_UV_PER_COUNT", None)
+_u = rig.uv_per_count_in_use()
 ok(
-    "...and the measured record does not attribute the spread to electrode prep without evidence",
-    "not instrument noise" in experimental.MEASURED_RIG["note"]
-    and "Electrode preparation dominates" not in experimental.MEASURED_RIG["note"],
+    "with $OLIMEX_UV_PER_COUNT unset, the default scale is used and SAID to be the default",
+    _u[0] == rig.UV_PER_COUNT and "default" in _u[1] and _u[2] == rig.UV_PER_COUNT_PROVENANCE,
+    str(_u),
 )
+os.environ["OLIMEX_UV_PER_COUNT"] = "3.25"
+_u = rig.uv_per_count_in_use()
 ok(
-    "...and the median is a true median of the six captures, not the upper-middle value",
-    abs(experimental.MEASURED_RIG["in_band_noise_nv_at_40hz_60s"] - 156.7) < 0.5,
+    "...and $OLIMEX_UV_PER_COUNT overrides it, naming the override as the basis",
+    _u[0] == 3.25 and "OLIMEX_UV_PER_COUNT" in _u[1] and "operator" in _u[2],
+    str(_u),
 )
-ok(
-    "the two µV/count figures agree with the constant",
-    experimental.MEASURED_RIG["uv_per_count"] == rig.UV_PER_COUNT,
-)
-_rnf = (HERE / "validation" / "rig_noise_floor.py").read_text()
-ok(
-    "the rig noise-floor script exists and reads the private captures without writing anything",
-    "PRIVATE DATA" in _rnf,
-)
-ok(
-    "...finds them ONLY through $OLIMEX_RIG_CAPTURES, never by walking into another project",
-    "OLIMEX_RIG_CAPTURES" in _rnf and '"projects"' not in _rnf,
-)
-ok(
-    "the rig's own validation write-up stays with the rig",
-    "the gate, run against this rig" in (HERE / "validation" / "VALIDATION.md").read_text(),
-)
+for _bad in ("seven", "-1", "0", "inf"):
+    os.environ["OLIMEX_UV_PER_COUNT"] = _bad
+    ok(
+        f"...and a malformed override ({_bad!r}) is ignored rather than guessed",
+        rig.configured_uv_per_count() is None and rig.uv_per_count_in_use()[0] == rig.UV_PER_COUNT,
+    )
+os.environ.pop("OLIMEX_UV_PER_COUNT")
+if _saved_upc is not None:
+    os.environ["OLIMEX_UV_PER_COUNT"] = _saved_upc
+
+# The rig profile (a board's noise floor, the USER's measurement) is tested in the experimental
+# extension's own gate: extensions/experimental/dev_check.py.
 
 # ============================================================ 12b. session UI ======
 _SIGNAL_PANEL = HERE.parent / "web" / "signal-panel"
@@ -347,7 +368,7 @@ ok(
     "says nothing about what the session" in qg["note"],
 )
 ok(
-    "mains frequency is a parameter, not a constant — this rig is 60 Hz, ds005185 was 50",
+    "mains frequency is a parameter, not a constant — a 60 Hz grid here, ds005185 was 50",
     quality.assess(good_ch, FS, mains_hz=50.0)["mains_hz"] == 50.0,
 )
 ok(
@@ -422,10 +443,8 @@ ok("CLAUDE.md keeps the original honesty section", "band power" in claude.lower(
 _FOREIGN_PATH = re.compile(r"(?<![\w.-])(projects|falsify|tools)/[\w-]+")
 for _f in (
     sorted(HERE.glob("*.md"))
-    + [HERE / "validation" / "VALIDATION.md"]
     + sorted(p for p in HERE.glob("*.py") if p.name != "dev_check.py")
     + sorted(HERE.glob("*.js"))
-    + sorted((HERE / "validation").glob("*.py"))
 ):
     _hits = _FOREIGN_PATH.findall(_f.read_text())
     ok(f"{_f.relative_to(HERE)} carries no path into another repository", not _hits, str(_hits))
@@ -585,8 +604,10 @@ section("TIMEBASE — the rate the board actually delivers, measured against the
 
 import timebase  # noqa: E402
 
-# The rig's own case (RIG.md, 2026-09-15): a board 644 ppm slow, read in ~114 ms chunks.
-_TRUE = 250.0 / (1 + 644e-6)
+# A SYNTHETIC board with an injected clock error, read in ~114 ms chunks. The offset is arbitrary:
+# the check is that the estimator recovers whatever offset was injected.
+_INJECTED_PPM = -400.0
+_TRUE = 250.0 * (1 + _INJECTED_PPM * 1e-6)
 
 
 def _replay(latency, seconds=123.0, chunk=0.114):
@@ -601,9 +622,9 @@ def _replay(latency, seconds=123.0, chunk=0.114):
 _rng = random.Random(3)
 clean = _replay(lambda t: 0.0016 + _rng.expovariate(1 / 0.004))
 ok(
-    "recovers the rig's measured -644 ppm from clean arrivals, within its own uncertainty",
+    "recovers an injected clock offset from clean arrivals, within its own uncertainty",
     clean["measured_hz"] is not None
-    and abs(clean["error_ppm"] + 644) <= max(3 * clean["uncertainty_ppm"], 10),
+    and abs(clean["error_ppm"] - _INJECTED_PPM) <= max(3 * clean["uncertainty_ppm"], 10),
     f"{clean['error_ppm']} ± {clean['uncertainty_ppm']}",
 )
 # THE REASON FOR THE LOWER ENVELOPE. Buffering that GROWS during a session (a busy reader, a
@@ -616,13 +637,14 @@ grow = _replay(
 )
 ok(
     "growing buffering does NOT bias the estimate (lower envelope, not least squares)",
-    grow["measured_hz"] is not None and abs(grow["error_ppm"] + 644) <= 25,
-    f"{grow['error_ppm']} ppm; a least-squares fit reads -1259 on this same data",
+    grow["measured_hz"] is not None and abs(grow["error_ppm"] - _INJECTED_PPM) <= 25,
+    f"{grow['error_ppm']} ppm against {_INJECTED_PPM} injected",
 )
-# REGRESSION, found on the real rig: re-opening the port delivers lines left in the OS buffer
-# INSTANTLY, then the Arduino resets and is silent for 1.62 s. Without the gap restart that early
-# instant was its bin's lowest latency and read a -685 ppm clock as -3300 ± 1491.
-_TRUE2 = 250.0 / (1 + 685e-6)
+# REGRESSION: re-opening the port can deliver lines left in the OS buffer INSTANTLY, then the
+# Arduino resets and is silent for ~1.6 s. Without the gap restart that early instant was its
+# bin's lowest latency and biased the fit by thousands of ppm. Synthetic offset, as above.
+_INJECTED_PPM2 = -500.0
+_TRUE2 = 250.0 * (1 + _INJECTED_PPM2 * 1e-6)
 _s = timebase.RateEstimator(250.0)
 _s.add(7000.0, 2)
 _t = 1.62
@@ -632,7 +654,9 @@ while _t < 140:
 _stale = _s.estimate()
 ok(
     "REGRESSION: stale buffered lines + the board's 1.6 s reboot do not bias the rate",
-    _stale["measured_hz"] is not None and abs(_stale["error_ppm"] + 685) <= 15 and _s.restarts == 1,
+    _stale["measured_hz"] is not None
+    and abs(_stale["error_ppm"] - _INJECTED_PPM2) <= 15
+    and _s.restarts == 1,
     f"{_stale['error_ppm']} ± {_stale['uncertainty_ppm']}, restarts {_s.restarts}",
 )
 _rng = random.Random(2)
@@ -646,7 +670,7 @@ while _t < 140:
     )
 ok(
     "a BUFFERED stall (samples arrive late, but keep arriving) does not restart the estimate",
-    _b.restarts == 0 and abs(_b.estimate()["error_ppm"] + 685) <= 15,
+    _b.restarts == 0 and abs(_b.estimate()["error_ppm"] - _INJECTED_PPM2) <= 15,
 )
 
 _e = timebase.RateEstimator(250.0)
@@ -689,7 +713,9 @@ ok(
     "the estimate resets on every (re)open, real port and demo",
     _srv.count("self.rate_est.reset()") == 2,
 )
-_exp_src = (HERE / "experimental.py").read_text()
+_exp_src = (
+    HERE.parents[1] / "extensions" / "experimental" / "olimex_shield_ext_experimental" / "routes.py"
+).read_text()
 ok(
     "live extraction uses the measured rate when it exists, and says which it used",
     '"measured"' in _srv

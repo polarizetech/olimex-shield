@@ -145,6 +145,7 @@ def start(body: dict) -> dict:
     # a gate that started two sessions in a test and got one back. `exist_ok=True` on a
     # directory that already holds a session is data loss wearing a convenience flag.
     mains_hz = _mains_hz(body.get("mains_hz"))  # validated BEFORE anything is created on disk
+    uv_per_count, uv_per_count_basis = _uv_per_count(body.get("uv_per_count"))
     base = time.strftime("%Y%m%d-%H%M%S") + f"-{project}"
     stamp, n = base, 1
     while (store_root() / stamp).exists():
@@ -161,7 +162,10 @@ def start(body: dict) -> dict:
         "site": body.get("site") or "",
         "montage": body.get("montage") or [],
         "rate_hz": float(body.get("rate_hz") or 0.0),
-        "uv_per_count": body.get("uv_per_count"),
+        # The scale this session was recorded against: the caller's, else $OLIMEX_UV_PER_COUNT,
+        # else null (the export then uses the tool's default and says so in `Scaling`).
+        "uv_per_count": uv_per_count,
+        "uv_per_count_basis": uv_per_count_basis,
         "already_uv": bool(body.get("already_uv")),
         "electrodes_on_at": body.get("electrodes_on_at"),
         "started_at": time.time(),
@@ -200,6 +204,21 @@ def _mains_hz(v):
     except (TypeError, ValueError):
         raise DatasetError(f"mains_hz must be a number, not {v!r}") from None
     return f if f and f > 0 else None
+
+
+def _uv_per_count(v):
+    """(scale, basis): the caller's uV/count, else `$OLIMEX_UV_PER_COUNT`, else (None, None)."""
+    if v is not None and v != "":
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            raise DatasetError(f"uv_per_count must be a number, not {v!r}") from None
+        return (f, "caller") if 0 < f < float("inf") else (None, None)
+    try:
+        f = float(os.environ.get("OLIMEX_UV_PER_COUNT") or "nan")
+    except ValueError:
+        return None, None  # a malformed setting is ignored, never guessed at
+    return (f, "$OLIMEX_UV_PER_COUNT") if 0 < f < float("inf") else (None, None)
 
 
 def append(body: dict) -> dict:

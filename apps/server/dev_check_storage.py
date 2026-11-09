@@ -11,6 +11,8 @@ not.
 
 import json
 import os
+import statistics
+import struct
 import sys
 import tempfile
 import types
@@ -58,6 +60,8 @@ def record(
 with tempfile.TemporaryDirectory() as store, tempfile.TemporaryDirectory() as out:
     os.environ["OLIMEX_SESSIONS"] = store
     os.environ.pop("OLIMEX_MAINS_HZ", None)
+    os.environ.pop("OLIMEX_UV_PER_COUNT", None)
+    os.environ.pop("OLIMEX_RIG_PROFILE", None)
     for k in [k for k in os.environ if k.startswith("OLIMEX_UPLOADER")]:
         del os.environ[k]
     import bids
@@ -214,6 +218,58 @@ with tempfile.TemporaryDirectory() as store, tempfile.TemporaryDirectory() as ou
     ok(
         "...and an existing README is never overwritten",
         (root / "README").read_text() == "the operator's own README\n",
+    )
+
+    # The scale actually used is recorded: the default, an operator override, or the session's.
+    _vals = [512 + (i % 7) for i in range(500)]
+    _med = statistics.median(_vals)
+
+    def _first_uv(r):
+        return struct.unpack("<f", Path(r["header"]).with_suffix(".eeg").read_bytes()[:4])[0]
+
+    ok(
+        "with no override, the default scale is used and named as the default",
+        "default" in side["Scaling"]
+        and side["ScalingProvenance"] == bids.rig.UV_PER_COUNT_PROVENANCE,
+        side["Scaling"],
+    )
+    os.environ["OLIMEX_UV_PER_COUNT"] = "2.5"
+    st_env = record(D)
+    D.stop({"stamp": st_env})
+    _m = D.load(st_env, values=False)["meta"]
+    ok(
+        "with $OLIMEX_UV_PER_COUNT set, a new session records that scale and where it came from",
+        _m["uv_per_count"] == 2.5 and _m["uv_per_count_basis"] == "$OLIMEX_UV_PER_COUNT",
+        str(_m.get("uv_per_count")),
+    )
+    os.environ.pop("OLIMEX_UV_PER_COUNT")
+    with tempfile.TemporaryDirectory() as o_env:
+        r_env = bids.export(st_env, o_env, subject="01")
+        s_env = json.loads(Path(r_env["header"]).with_suffix(".json").read_text())
+        ok(
+            "...and its export scales by the RECORDED 2.5, even after the override is unset",
+            "2.5" in s_env["Scaling"]
+            and "OLIMEX_UV_PER_COUNT" in s_env["Scaling"]
+            and abs(_first_uv(r_env) - (_vals[0] - _med) * 2.5) < 1e-4,
+            s_env["Scaling"],
+        )
+    os.environ["OLIMEX_UV_PER_COUNT"] = "3.0"
+    with tempfile.TemporaryDirectory() as o_ov:
+        r_ov = bids.export(st, o_ov, subject="01")
+        s_ov = json.loads(Path(r_ov["header"]).with_suffix(".json").read_text())
+        ok(
+            "a session that recorded no scale exports with the operator's override, saying so",
+            "OLIMEX_UV_PER_COUNT" in s_ov["Scaling"]
+            and "operator" in s_ov["ScalingProvenance"]
+            and abs(_first_uv(r_ov) - (_vals[0] - _med) * 3.0) < 1e-4,
+            s_ov["Scaling"],
+        )
+    os.environ.pop("OLIMEX_UV_PER_COUNT")
+    st_call = record(D, uv_per_count=4.0)
+    D.stop({"stamp": st_call})
+    ok(
+        "a caller's uv_per_count is recorded as the caller's",
+        D.load(st_call, values=False)["meta"]["uv_per_count_basis"] == "caller",
     )
 
     os.environ["OLIMEX_MAINS_HZ"] = "50"

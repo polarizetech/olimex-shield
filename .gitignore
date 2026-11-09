@@ -3,7 +3,6 @@
 sessions/
 recordings/
 apps/server/recordings/
-apps/server/validation/data/
 exports/
 
 __pycache__/

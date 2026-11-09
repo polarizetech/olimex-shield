@@ -1,0 +1,32 @@
+{
+  "schema": "olimex-shield-extension-catalog/1",
+  "about": "An index of extensions built on olimex-shield, in this repository or not. It is not a registry: an extension declares itself with extensions.declare() (apps/server/extensions.py) and registers the `olimex_shield.extensions` entry point. The bridge's extensions.discover() finds every installed one, every entry here with a `path` (no install needed) and every package in $OLIMEX_EXTENSIONS, and reports each with a status. An entry with a `path` and no other `repo` lives here, and tests/test_contract.py holds it to its package. `routes` lets the bridge answer 503 with the extension's status when it is absent or refused. Rules: docs/EXTENSIONS.md.",
+  "extensions": [
+    {
+      "name": "olimex-shield-ext-experimental",
+      "import": "olimex_shield_ext_experimental",
+      "version": "0.1.0",
+      "requires": ">=0.3.0,<0.4",
+      "job": "Serves the experimental analysis routes (lock-in, noise budget, atlas) as bridge routes.",
+      "path": "extensions/experimental",
+      "experimental": true,
+      "routes": [
+        "GET /claims",
+        "GET /atlas/reference",
+        "GET /extract/reference",
+        "GET /rig/profile",
+        "POST /predict",
+        "POST /montage",
+        "POST /simulate",
+        "POST /integration-check",
+        "POST /extract",
+        "POST /extract/sustain",
+        "POST /extract/artifact",
+        "POST /extract/feasibility",
+        "POST /noise-budget",
+        "POST /detection-curve",
+        "POST /rate-trade"
+      ]
+    }
+  ]
+}

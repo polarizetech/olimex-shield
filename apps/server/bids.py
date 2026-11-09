@@ -18,11 +18,11 @@ What goes where:
 
   * UNITS. Sessions store raw ADC counts. The export is microvolts: the session's median is
     subtracted (the board is AC-coupled at 0.16 Hz in silicon, so the ADC's resting code is
-    bias, not physiology) and the result is multiplied by the session's `uv_per_count`, or by
-    `rig.UV_PER_COUNT` (7.9, from the shield's built-in cal signal at its NOMINAL amplitude, not
-    externally verified) when the session did not record one. Which was used, and that
-    provenance, are written into the sidecar (`Scaling`, `ScalingProvenance`). The Olimex
-    datasheet implies 1.72; that 4.6x disagreement is carried, not resolved.
+    bias, not physiology) and the result is multiplied by the session's `uv_per_count`, else by
+    `$OLIMEX_UV_PER_COUNT`, else by the default `rig.UV_PER_COUNT` (one board's built-in cal
+    signal at its NOMINAL amplitude, not externally verified; the gain differs per board). Which
+    was used, and its provenance, are written into the sidecar (`Scaling`, `ScalingProvenance`).
+    The Olimex datasheet implies 1.72; that disagreement is carried, not resolved.
   * MAINS. `PowerLineFrequency` is the session's `mains_hz`, else `$OLIMEX_MAINS_HZ`, else "n/a"
     (BIDS 1.9 allows "n/a"). It is never assumed from the bench this code was written on.
   * VERSION. `SoftwareVersions` names the chain version (pyproject.toml) that exported it, and
@@ -32,9 +32,10 @@ What goes where:
     `eeg` datatype with its channel typed ECG/EMG, EEGChannelCount 0, the matching
     ECGChannelCount/EMGChannelCount 1, and a `RecordingNote` saying so.
   * FILTERS. The 0.16-40 Hz band is in the board's hardware and goes into `HardwareFilters`.
-  * RATE. `SamplingFrequency` is the DECLARED grid (what the firmware schedules). The board's
-    real rate differs by ~680 ppm and drifts; the bridge measures it (`timebase.py`) and, when
-    the session recorded that measurement, it is written as `SamplingFrequencyMeasured`.
+  * RATE. `SamplingFrequency` is the DECLARED grid (what the firmware schedules). A board's real
+    rate differs from it (boards commonly run hundreds of ppm off nominal) and drifts; the bridge
+    measures it (`timebase.py`) and, when the session recorded that measurement, it is written as
+    `SamplingFrequencyMeasured`.
 
 *** WHAT IT REFUSES. ***
 
@@ -155,14 +156,18 @@ def export(
         raise ExportError(f"{stamp!r} has no samples")
     if meta.get("already_uv"):
         uv, scale_basis, offset = raw, "samples were already microvolts", 0.0
+        scale_provenance = "supplied by the session; not checked by this export"
     else:
         upc = meta.get("uv_per_count")
-        scale = float(upc) if upc else rig.UV_PER_COUNT
-        scale_basis = (
-            f"session uv_per_count = {scale}"
-            if upc
-            else f"rig.UV_PER_COUNT = {rig.UV_PER_COUNT} ({rig.UV_PER_COUNT_PROVENANCE})"
-        )
+        if upc:
+            scale = float(upc)
+            scale_basis = f"session uv_per_count = {scale}"
+            if meta.get("uv_per_count_basis"):
+                scale_basis += f" ({meta['uv_per_count_basis']})"
+            scale_provenance = "supplied by the session; not checked by this export"
+        else:
+            scale, basis, scale_provenance = rig.uv_per_count_in_use()
+            scale_basis = f"{basis} ({scale_provenance})"
         offset = statistics.median(raw)
         uv = [(x - offset) * scale for x in raw]
 
@@ -247,11 +252,7 @@ def export(
         "SoftwareVersions": sw,
         "InstitutionName": "n/a",
         "Scaling": scale_basis,
-        "ScalingProvenance": (
-            rig.UV_PER_COUNT_PROVENANCE
-            if not meta.get("already_uv") and not meta.get("uv_per_count")
-            else "supplied by the session; not checked by this export"
-        ),
+        "ScalingProvenance": scale_provenance,
         "DCOffsetRemoved": offset,
         "NotAMedicalDevice": "Hobby amplifier. Nothing in this recording is a diagnosis.",
     }
@@ -338,8 +339,9 @@ def _readme(synthetic: bool, version: str) -> str:
         f"{rig.FRONT_END_LP_HZ:g} Hz ahead of the converter. A hobby amplifier, not a medical "
         "device.",
         "",
-        "Scaling: samples are microvolts computed from ADC counts. Unless a sidecar says otherwise "
-        f"the scale is {rig.UV_PER_COUNT} uV/count, {rig.UV_PER_COUNT_PROVENANCE}",
+        "Scaling: samples are microvolts computed from ADC counts. Each sidecar's Scaling and "
+        "ScalingProvenance say which uV/count was used. The tool's default is "
+        f"{rig.UV_PER_COUNT} uV/count, {rig.UV_PER_COUNT_PROVENANCE}",
         "",
         "ECG and EMG recordings, if any, are stored in the eeg datatype with their channel typed "
         "ECG or EMG; see each sidecar's RecordingNote.",
