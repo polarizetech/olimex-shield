@@ -13,7 +13,7 @@ Releases from 0.3.0 on are tagged `vX.Y.Z`; earlier ones were tagged `model-vX.Y
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-09-27
+## [0.3.0] — 2026-11-08
 
 This repo is now the tool only, and adopts the "tool" kind (`TOOL.toml`) and the extension
 pattern. Measurements of a particular board, validation write-ups and the experiment registry
@@ -27,6 +27,9 @@ routes moved out of the core into an extension, versioned apart.
   dataset `README`'s Scaling paragraph is reworded to match. Re-run: `olimex-shield-bridge` only
   if it compares sidecar text (it uses the BIDS export); its numbers are unchanged.
 - `session.json` gains `uv_per_count_basis`; existing keys and values are unchanged. Re-run: none.
+- `POST /spectrum`: `freqs` are now bucket centres, and each bucket is the maximum over its bins
+  (see Fixed); `bucket_hz`, `bin_hz`, `samples_used` and `summary` are new. Only the workbench's
+  drawing uses it; nothing is stored in a session or an export. Re-run: none.
 - `rig.RATE_ERROR_PPM_SNAPSHOT` is removed (a measurement of one board, not a constant).
   `rig.UV_PER_COUNT` is unchanged. Re-run: none.
 
@@ -79,6 +82,18 @@ routes moved out of the core into an extension, versioned apart.
   to be swapped for `tool-versioning`, which also supplies `.agents/tools/release-check`.)
 - `scripts/check_docs.py` no longer compares the post's measured noise figures; it checks spec
   facts, photos, the repo link and the safety list.
+
+### Fixed
+- `quality.spectrum()` evaluated one DFT bin per display bucket and skipped the rest, so on a
+  record longer than a couple of seconds a narrow line fell between the evaluated bins and vanished
+  from the Monitor tab's spectrum (a 260-count 10 Hz sine over 20 s drew as about 1 count). Each
+  bucket now reports the **maximum** amplitude of every bin it covers, from one zero-padded FFT of
+  the most recent 16 384 samples at most. `freqs` are now bucket centres. `resolution_hz` keeps its
+  meaning (rate / samples used); `bucket_hz`, `bin_hz`, `samples_used` and `summary` are new.
+
+### Changed (infrastructure)
+- Updated to scientific-research-scaffold v0.12.0 and KIT Adaptive Preregistration 949f0cd.
+
 
 ## [0.2.0] — 2026-09-25
 

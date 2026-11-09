@@ -1,0 +1,85 @@
+# Build-vs-reuse register: our own scientific code, and the open-source, peer-reviewed tool that
+# does (or could do) the same job. States: tandem | candidate | none-found | replaced.
+# Format: https://github.com/polarizetech/retrieval-augmented-generation/blob/main/docs/reuse-register.md
+# Seeded from the 2026-10-28 review of this repo; check entries as you touch the code.
+
+[[custom]]
+name = "EEG-BIDS export"
+path = "apps/server/bids.py"
+does = "EEG-BIDS 1.9.0 export in BrainVision format"
+state = "tandem"
+alternative = "mne-bids"
+check = "apps/server/dev_check_storage.py"
+note = "Read back with mne_bids.read_raw_bids and compared sample by sample; skipped without mne. Not yet run through bids-validator"
+
+[[custom]]
+name = "Goertzel tone power"
+path = "apps/server/quality.py"
+does = "Goertzel power at a single frequency"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "Compare with the scipy.fft bin power at the same frequency and window"
+
+[[custom]]
+name = "Band power and coarse spectrum"
+path = "apps/server/quality.py"
+does = "Hann-windowed band power (not Welch), EEG bands, coarse spectrum"
+state = "candidate"
+alternative = "mne"
+check = ""
+note = "mne.time_frequency.psd_array_welch on the same windows, on a public record such as PhysioNet EEGMMIDB"
+
+[[custom]]
+name = "Signal-quality verdict"
+path = "apps/server/quality.py"
+does = "assess: heuristic quality verdict from band power and tones"
+state = "candidate"
+alternative = "pyprep"
+check = ""
+note = "PREP noisy-channel detection (Bigdely-Shamlo et al. 2015, via pyprep) on the same recordings; heuristic was ported from an earlier internal project"
+
+[[custom]]
+name = "Sample-rate and clock estimator"
+path = "apps/server/timebase.py"
+does = "estimates the true sample rate and clock drift from timestamps"
+state = "none-found"
+alternative = ""
+check = ""
+note = "Synthetic timestamps only"
+
+[[custom]]
+name = "Front-end filter model"
+path = "apps/server/rig.py"
+does = "HP/LP response model, 0.16/40 Hz (never measured)"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "scipy.signal.freqs for the same analog sections; corner values need a datasheet or measurement"
+
+[[custom]]
+name = "Readout feasibility gate"
+path = "apps/web/readouts.py"
+does = "decides which readouts the signal can support"
+state = "none-found"
+alternative = ""
+check = ""
+note = "No ref"
+
+[[custom]]
+name = "Client band power and IAF"
+path = "apps/server/eeg-client.js"
+does = "bands() and iaf() (individual alpha frequency) in the browser"
+state = "candidate"
+alternative = "mne"
+check = ""
+note = "Parity with the server only; compare bands with MNE psd_array_welch and IAF with a specparam alpha peak"
+
+[[custom]]
+name = "Display filter"
+path = "apps/web/signal-panel/signal-panel.js"
+does = "1 Hz high-pass and 45 Hz low-pass for display"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "Cosmetic; compare frequency response with scipy.signal.butter/sosfreqz at the same orders"

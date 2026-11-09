@@ -1,0 +1,22 @@
+# Rebuilds this repository's docs site on every push to main.
+# Installed by `docsite init`. The steps live in automatic-documentation-site, so a fix there
+# reaches this repository by bumping the tag below. Guide:
+# https://github.com/polarizetech/automatic-documentation-site/blob/main/docs/WORKFLOW.md
+name: docs-site
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: docs-site
+  cancel-in-progress: true
+jobs:
+  docs:
+    uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.2.1
+    with:
+      publish: pages   # deploys to GitHub Pages (enable Pages with source 'GitHub Actions' in the repository settings)
+      # No setup step: the stories import this repository's modules by path, and they are stdlib only.
