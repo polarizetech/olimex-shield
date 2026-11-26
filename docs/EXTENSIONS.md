@@ -46,7 +46,7 @@ The second is [`extensions/beats/`](../extensions/beats/): `GET /beats`, heartbe
    | Attribute | Required | What it is |
    |---|---|---|
    | `ROUTES` | to serve routes | `{("GET" or "POST", "/path"): handler}` |
-   | `handler(body, ctx)` | | returns `(status, obj)`. `body` is the JSON body of a POST, or the query parameters of a GET. `ctx.samples_for(body)`, `ctx.rate_for(body)` and `ctx.default_rate` are the bridge's own helpers: supplied samples or the tail of the live ring, and the rate with its basis. |
+   | `handler(body, ctx)` | | returns `(status, obj)`. `body` is the JSON body of a POST, or the query parameters of a GET. `ctx.samples_for(body)`, `ctx.rate_for(body)` and `ctx.default_rate` are the bridge's own helpers: supplied samples or the tail of the live ring, and the rate with its basis. `ctx.timed_samples_for(body)` returns `{samples, t_us, arrived}`: the live ring's tail with each sample's board `t_us` and the host time the newest sample arrived; live only. |
    | `mark(obj)` | no | applied to every response from its routes, errors included |
    | `FIREWALL_ERRORS` | no | exception classes the bridge answers with 400 and `"firewall": true` |
    | `health()` | no | a dict shown under the extension's row in `/health` |

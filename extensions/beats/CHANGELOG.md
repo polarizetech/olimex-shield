@@ -10,4 +10,4 @@ Tested against olimex-shield 0.3.0 (`REQUIRES = ">=0.3.0,<0.4"`).
 
 ### Added
 - `GET /beats`: R peaks in the last 5 s of the live ring by Elgendi 2013's two moving averages
-  (`detect.py`), each beat numbered once (`k`), with its host time `t`, `age_s` and `rr_s`.
+  (`detect.py`), each beat numbered once (`k`), with its time as the board's own `t_us` (beat times are board `t_us`), `behind_newest_s` and `rr_s`.

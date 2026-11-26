@@ -194,6 +194,8 @@ class SerialDaemon:
         self.baud = None
         self.channel_col = 1
         self.buf = []
+        # the board's t_us for each sample in buf, same order (None when the board sends none)
+        self.tbuf = []
         self.total = 0  # monotonic count of ALL samples ever read (survives ring trim)
         self.generation = 0  # bumps on each (re)open so a client can detect a device swap
         self.last_ms = 0.0
@@ -259,7 +261,7 @@ class SerialDaemon:
             self.port = handle
             self.port_name, self.baud = port_name, baud
             self.channel_col = int(channel_col)
-            self.buf, self.total = [], 0
+            self.buf, self.tbuf, self.total = [], [], 0
             self.rate_est.reset()
             self.integrity.reset()
             self.generation += 1
@@ -288,7 +290,7 @@ class SerialDaemon:
             self.port = "demo"  # truthy, so `open` reads true in status
             self.port_name, self.baud = self.DEMO_PORT, 0
             self.channel_col = 1
-            self.buf, self.total = [], 0
+            self.buf, self.tbuf, self.total = [], [], 0
             self.rate_est.reset()
             self.integrity.reset()
             self.generation += 1
@@ -344,10 +346,12 @@ class SerialDaemon:
                 for tu in tus:
                     self._count_step(self.integrity.add(tu))
                 self.buf.extend(vals)
+                self.tbuf.extend(tus)
                 self.total += len(vals)
                 base_idx = self.total - len(vals)
                 if len(self.buf) > self.RING:
                     del self.buf[: len(self.buf) - self.RING]
+                    del self.tbuf[: len(self.tbuf) - self.RING]
                 self.last_ms = time.time() * 1000.0
                 # Measured like a real port, so the demo exercises the same path. It is paced by the
                 # host clock, so it should read ~0 ppm -- which is itself a check on the estimator.
@@ -408,10 +412,12 @@ class SerialDaemon:
                     if not vals:
                         continue
                     self.buf.extend(vals)
+                    self.tbuf.extend(tus)
                     self.total += len(vals)
                     base_idx = self.total - len(vals)
                     if len(self.buf) > self.RING:
                         del self.buf[: len(self.buf) - self.RING]
+                        del self.tbuf[: len(self.tbuf) - self.RING]
                     self.last_ms = time.time() * 1000.0
                     self.rate_est.add(arrived, self.total)
                 self._record(base_idx, vals, tus)  # disk I/O OUTSIDE the buf lock — never stall SSE
@@ -529,6 +535,12 @@ class SerialDaemon:
             start = len(self.buf) - (self.total - cur)
             return self.buf[start:], self.total, cur
 
+    def tail(self, n):
+        """The newest n samples, their board t_us, and the host time (s) the newest arrived, read
+        under one lock so the three agree."""
+        with self.lock:
+            return list(self.buf[-n:]), list(self.tbuf[-n:]), self.last_ms / 1000.0
+
     def _status_locked(self):
         since = (time.time() * 1000.0 - self.last_ms) if self.last_ms else None
         rt = self.rate_est.estimate()
@@ -631,9 +643,34 @@ def _samples_for(body):
     raise ValueError('no samples: pass `samples` or `source:"live"` with `seconds`')
 
 
+def _timed_samples_for(body):
+    """The live ring's tail with the board's own clock: {"samples", "t_us", "arrived"}.
+
+    `t_us` is each sample's stamp exactly as the board sent it (micros(), wrapping at 2**32);
+    `arrived` is the host time the newest sample was read. Live source only.
+    """
+    if body.get("source") != "live":
+        raise ValueError('timed samples come from the live ring only: pass source:"live"')
+    rate, _basis = _rate_for(body)
+    want = int(round(float(body.get("seconds", 10.0)) * rate))
+    total = DAEMON.status().get("total", 0)
+    if total < want:
+        raise ValueError(
+            f"only {total} samples acquired so far; {want} requested. "
+            "Acquisition has not run long enough for this dwell."
+        )
+    vals, tus, arrived = DAEMON.tail(want)
+    return {"samples": [float(v) for v in vals], "t_us": tus, "arrived": arrived}
+
+
 #: What an extension's route handler is given: the bridge's own helpers, nothing else.
 _CTX = (
-    _ext.Context(samples_for=_samples_for, rate_for=_rate_for, default_rate=DEFAULT_RATE)
+    _ext.Context(
+        samples_for=_samples_for,
+        rate_for=_rate_for,
+        default_rate=DEFAULT_RATE,
+        timed_samples_for=_timed_samples_for,
+    )
     if _ext
     else None
 )
