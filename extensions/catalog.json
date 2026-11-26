@@ -27,6 +27,18 @@
         "POST /detection-curve",
         "POST /rate-trade"
       ]
+    },
+    {
+      "name": "olimex-shield-ext-beats",
+      "import": "olimex_shield_ext_beats",
+      "version": "0.1.0",
+      "requires": ">=0.3.0,<0.4",
+      "job": "Reports heartbeats from the live ECG: each R peak's time and the R-R interval.",
+      "path": "extensions/beats",
+      "experimental": true,
+      "routes": [
+        "GET /beats"
+      ]
     }
   ]
 }

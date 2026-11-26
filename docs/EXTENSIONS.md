@@ -9,6 +9,8 @@ versioned apart, each declaring the core releases it was tested against, and one
 The experimental analysis routes are the first one: [`extensions/experimental/`](../extensions/experimental/)
 (see [`experimental.md`](experimental.md)).
 
+The second is [`extensions/beats/`](../extensions/beats/): `GET /beats`, heartbeats (R-peak times and R-R intervals) from the live ECG, exploratory (`scope/ecg-beats.md`).
+
 ## The contract
 
 1. **It is its own package**, with a distribution name starting `olimex-shield-ext-`, an import
