@@ -13,6 +13,9 @@ Releases from 0.3.0 on are tagged `vX.Y.Z`; earlier ones were tagged `model-vX.Y
 
 ## [Unreleased]
 
+### Added
+- `Context.timed_samples_for`: the live ring's tail with each sample's board `t_us` and the newest sample's arrival time, so an extension can time events on the board's clock.
+
 ## [0.3.0] — 2026-11-08
 
 This repo is now the tool only, and adopts the "tool" kind (`TOOL.toml`) and the extension

@@ -411,6 +411,8 @@ class Context:
     samples_for: Callable[[dict], list]
     rate_for: Callable[[dict], tuple]
     default_rate: float = 250.0
+    # the live tail with the board's t_us (serve.py _timed_samples_for)
+    timed_samples_for: Callable[[dict], dict] | None = None
 
 
 def _ok_modules():

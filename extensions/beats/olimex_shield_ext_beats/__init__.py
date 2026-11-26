@@ -21,47 +21,83 @@ EXTENSION = _declare(
     version=__version__,
     requires=REQUIRES,
     job="Reports heartbeats from the live ECG: each R peak's time and the R-R interval.",
-    uses=("extensions.Context.samples_for", "extensions.Context.rate_for"),
+    uses=(
+        "extensions.Context.samples_for",
+        "extensions.Context.rate_for",
+        "extensions.Context.timed_samples_for",
+    ),
     extends={},
 )
 
 WINDOW_S = 5.0  # the seconds of the live ring searched on each request (build)
 KEEP = 64  # beats remembered, to number each one once (build)
+MOD = 2**32  # the board's micros() wraps here (apps/server/timebase.py T_US_MODULUS)
 METHOD = "Elgendi 2013, doi:10.1371/journal.pone.0073557 (two event-related moving averages)"
 
 _LOCK = threading.Lock()
 _STATE = {"k": 0, "beats": []}
 
 
+def _since_us(a, b):
+    """Board microseconds from stamp b to stamp a, across the 2**32 wrap."""
+    return (a - b) % MOD
+
+
 def _beats(query, ctx):
-    """GET /beats[?seconds=s]: the beats in the last s seconds of the live ring,
-    each numbered once."""
+    """GET /beats[?seconds=s]: the beats in the last s seconds of the live ring, each numbered once.
+    Each beat's time is the board's own t_us stamp of its R-peak sample,
+    exactly as the board sent it."""
     body = {"source": "live", "seconds": query.get("seconds", WINDOW_S)}
+    if getattr(ctx, "timed_samples_for", None) is None:
+        return 409, {
+            "error": "this bridge does not give the board's clock to extensions",
+            "beats": [],
+        }
     try:
         rate, basis = ctx.rate_for(body)
-        x = ctx.samples_for(body)
+        got = ctx.timed_samples_for(body)
     except ValueError as e:
         return 409, {"error": str(e), "beats": []}
+    x, tus, arrived = got["samples"], got["t_us"], got["arrived"]
+    if not tus or any(tu is None for tu in tus):
+        return 409, {
+            "error": "the board sends no t_us, so beat times cannot come from its clock",
+            "beats": [],
+        }
     now = time.time()
-    n = len(x)
+    newest = tus[-1]
     out = []
     with _LOCK:
         for i in detect.r_peaks(x, rate):
-            t = now - (n - 1 - i) / rate
-            known = next((b for b in _STATE["beats"] if abs(b["t"] - t) < detect.W1_S), None)
+            tu = tus[i]
+            known = next(
+                (
+                    b
+                    for b in _STATE["beats"]
+                    if min(_since_us(tu, b["t_us"]), _since_us(b["t_us"], tu)) < detect.W1_S * 1e6
+                ),
+                None,
+            )
             if known is None:
                 prev = _STATE["beats"][-1] if _STATE["beats"] else None
                 _STATE["k"] += 1
-                rr = t - prev["t"] if prev is not None and t > prev["t"] else None
-                known = {"k": _STATE["k"], "t": t, "rr_s": rr}
+                rr = None
+                if prev is not None and 0 < _since_us(tu, prev["t_us"]) < MOD // 2:
+                    rr = _since_us(tu, prev["t_us"]) / 1e6
+                known = {"k": _STATE["k"], "t_us": tu, "rr_s": rr}
                 _STATE["beats"].append(known)
                 del _STATE["beats"][:-KEEP]
-            out.append(dict(known, age_s=now - known["t"]))
+            out.append(dict(known, behind_newest_s=_since_us(newest, known["t_us"]) / 1e6))
     return 200, {
         "now": now,
+        "newest_t_us": newest,
+        "newest_arrived": arrived,
+        "clock": (
+            "board t_us (micros(), wraps at 2**32); now and newest_arrived are host time.time()"
+        ),
         "rate": rate,
         "rate_basis": basis,
-        "window_s": n / rate if rate else 0.0,
+        "window_s": len(x) / rate if rate else 0.0,
         "beats": out,
         "method": METHOD,
         "params": {

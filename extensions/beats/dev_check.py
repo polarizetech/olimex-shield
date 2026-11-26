@@ -54,9 +54,10 @@ class DevCheck(unittest.TestCase):
 
     def test_route_numbers_each_beat_once(self):
         x, _ = synthetic()
+        stamps = [i * 4000 for i in range(len(x))]
         ctx = types.SimpleNamespace(
             rate_for=lambda b: (250.0, "declared"),
-            samples_for=lambda b: x,
+            timed_samples_for=lambda b: {"samples": x, "t_us": stamps, "arrived": 100.0},
             default_rate=250.0,
         )
         beats._STATE = {"k": 0, "beats": []}
@@ -65,16 +66,49 @@ class DevCheck(unittest.TestCase):
         self.assertEqual(first[0], 200)
         self.assertEqual(second[0], 200)
         self.assertEqual([b["k"] for b in second[1]["beats"]], [b["k"] for b in first[1]["beats"]])
+        for b in first[1]["beats"]:
+            self.assertEqual(b["t_us"] % 4000, 0)
+            self.assertIn(b["t_us"], stamps)
         for b in first[1]["beats"][1:]:
             self.assertIsNotNone(b["rr_s"])
             self.assertLess(abs(b["rr_s"] - 0.857), 0.01)
+        self.assertEqual(second[1]["newest_t_us"], stamps[-1])
+
+    def test_rr_across_the_wrap(self):
+        x, _ = synthetic()
+        stamps = [(2**32 - 2_000_000 + i * 4000) % 2**32 for i in range(len(x))]
+        ctx = types.SimpleNamespace(
+            rate_for=lambda b: (250.0, "declared"),
+            timed_samples_for=lambda b: {"samples": x, "t_us": stamps, "arrived": 100.0},
+            default_rate=250.0,
+        )
+        beats._STATE = {"k": 0, "beats": []}
+        status, body = beats._beats({}, ctx)
+        self.assertEqual(status, 200)
+        for b in body["beats"]:
+            if b["rr_s"] is not None:
+                self.assertLess(abs(b["rr_s"] - 0.857), 0.01)
+            self.assertGreaterEqual(b["behind_newest_s"], 0)
+            self.assertLessEqual(b["behind_newest_s"], len(x) / 250.0)
+
+    def test_no_board_clock_is_409(self):
+        x, _ = synthetic()
+        ctx = types.SimpleNamespace(
+            rate_for=lambda b: (250.0, "declared"),
+            timed_samples_for=lambda b: {"samples": x, "t_us": [None] * len(x), "arrived": 100.0},
+            default_rate=250.0,
+        )
+        status, _ = beats._beats({}, ctx)
+        self.assertEqual(status, 409)
 
     def test_not_enough_samples_is_409(self):
         def raise_short(b):
             raise ValueError("only 0 samples")
 
         ctx = types.SimpleNamespace(
-            rate_for=lambda b: (250.0, "declared"), samples_for=raise_short, default_rate=250.0
+            rate_for=lambda b: (250.0, "declared"),
+            timed_samples_for=raise_short,
+            default_rate=250.0,
         )
         status, _ = beats._beats({}, ctx)
         self.assertEqual(status, 409)
