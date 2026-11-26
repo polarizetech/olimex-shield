@@ -15,6 +15,6 @@ Evidence: W2080883481#p22.b71c31f9 "The optimal offset fraction varies from 2 to
 Evidence: W2080883481#p10.eeb81ef4 "finding the maximum absolute value within each block, the R peak"
 Chosen over Pan & Tompkins: Porr & Macfarlane 2024, DOI 10.1371/journal.pone.0309739, W4404230332#p34.c8849e8e "EngZee, Elgendi and the WQRS are the best detectors available".
 
-F2. Beat events: `GET /beats` returns each beat in the window once numbered (k), with its time (host clock), its age and the R-R interval from the beat before. Two R peaks less than 97 ms apart (one QRS) are the same beat. Source: build.
+F2. Beat events: `GET /beats` returns each beat in the window once numbered (k), with its time (host clock), its age and the R-R interval from the beat before. Two R peaks less than 97 ms apart (one QRS) are the same beat. Source: build. Raw: no beat is dropped or moved (owner, 2026-11-26; AGENTS.md); the steps that run are listed in extensions/beats/README.md.
 
 Not here: electrodes and their placement (docs/hardware.md), predicting the next beat, any use of the beats (polarize-holo `scope/ecg-heart.md`). A personal rig, not a medical device; nothing it shows is a finding.

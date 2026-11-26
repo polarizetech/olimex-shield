@@ -80,9 +80,8 @@ def moving_average(z: list[float], w: int) -> list[float]:
 
 
 def r_peaks(x: list[float], rate: float) -> list[int]:
-    """Indices of the R peaks in x. A block still open at the last sample is not reported,
-    nor one that starts within the beat window of the first sample (the filter's and the
-    average's start)."""
+    """Indices of the R peaks in x. A block still open at the last sample is not reported yet:
+    it is reported by a later request, once it has closed."""
     n = len(x)
     w1, w2 = odd_window(W1_S, rate), odd_window(W2_S, rate)
     if n < 2 * w2:
@@ -97,7 +96,7 @@ def r_peaks(x: list[float], rate: float) -> list[int]:
         if inside and start is None:
             start = i
         elif not inside and start is not None:
-            if i - start >= w1 and start >= w2:
+            if i - start >= w1:
                 peaks.append(max(range(start, i), key=lambda j: abs(y[j])))
             start = None
     return peaks
